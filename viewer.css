@@ -11,7 +11,7 @@
   display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
 }
 .brand { display: flex; align-items: baseline; gap: 10px; }
-.brand h1 { font-size: 17px; }
+.brand h1 { font-size: 17px; word-break: keep-all; }
 .published { font-size: 12px; color: var(--text-3); }
 
 .tabs { display: flex; gap: 2px; margin-left: auto; }
@@ -257,6 +257,7 @@
 .detail ul.cl li.done { color: var(--text-3); text-decoration: line-through; }
 
 @media (max-width: 720px) {
+  .brand h1 { font-size: 15px; }
   .stats { grid-template-columns: repeat(2, 1fr); }
   .topbar-in { gap: 10px; }
   .tabs { margin-left: 0; width: 100%; }
