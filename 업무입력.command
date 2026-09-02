@@ -1,6 +1,6 @@
 #!/bin/zsh
 # 더블클릭하면 로컬 게시 서버를 띄우고 입력 앱을 브라우저로 연다.
-# 창을 닫거나 Control-C 를 누르면 꺼진다.
+# 이미 떠 있으면 브라우저만 연다. 끄려면 Control-C 또는 창 닫기.
 
 cd "$(dirname "$0")" || exit 1
 
@@ -13,4 +13,10 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
-OPEN=1 exec node serve.js
+OPEN=1 node serve.js
+status=$?
+
+if [ $status -ne 0 ]; then
+  echo ""
+  read "?문제가 있었습니다. 위 내용을 확인하고 엔터를 누르면 닫힙니다."
+fi

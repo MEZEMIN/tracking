@@ -140,10 +140,39 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
+const inputUrl = `http://localhost:${PORT}/input/`;
+
+/** 그 포트에 이미 우리 서버가 떠 있는지 확인한다. */
+async function alreadyRunning() {
+  try {
+    const r = await fetch(`http://${HOST}:${PORT}/api/status`, {
+      signal: AbortSignal.timeout(1500),
+    });
+    return r.ok && (await r.json()).ok === true;
+  } catch {
+    return false;
+  }
+}
+
+// 포트가 이미 물려 있으면 죽지 말고, 우리 서버면 브라우저만 연다.
+server.on('error', async (err) => {
+  if (err.code !== 'EADDRINUSE') throw err;
+
+  if (await alreadyRunning()) {
+    console.log(`이미 서버가 떠 있습니다. 브라우저만 엽니다.\n  ${inputUrl}`);
+    execFile('open', [inputUrl], () => {});
+    process.exit(0);
+  }
+
+  console.error(`포트 ${PORT} 를 다른 프로그램이 쓰고 있습니다.`);
+  console.error('그 프로그램을 끄거나, 다른 포트로 띄우세요:');
+  console.error('  PORT=8766 node serve.js');
+  process.exit(1);
+});
+
 server.listen(PORT, HOST, () => {
-  const input = `http://localhost:${PORT}/input/`;
-  console.log(`업무 입력 앱: ${input}`);
+  console.log(`업무 입력 앱: ${inputUrl}`);
   console.log(`조회 앱 미리보기: http://localhost:${PORT}/`);
   console.log('게시 버튼을 누르면 data.json 을 커밋하고 푸시합니다. 끄려면 Control-C.');
-  if (process.env.OPEN) execFile('open', [input], () => {});
+  if (process.env.OPEN) execFile('open', [inputUrl], () => {});
 });

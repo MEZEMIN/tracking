@@ -13,6 +13,12 @@
 .brand { display: flex; align-items: baseline; gap: 10px; }
 .brand h1 { font-size: 17px; word-break: keep-all; }
 .published { font-size: 12px; color: var(--text-3); }
+.updated {
+  font-size: 11px; color: var(--calm); background: var(--calm-soft);
+  border-radius: 100px; padding: 2px 9px;
+  animation: fade-in .25s ease-out;
+}
+@keyframes fade-in { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; } }
 
 .tabs { display: flex; gap: 2px; margin-left: auto; }
 .tab {
@@ -93,14 +99,17 @@
 
 .legend { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; font-size: 12px; color: var(--text-2); }
 .legend > span { display: inline-flex; align-items: center; gap: 6px; }
-.legend .sample { width: 42px; height: 16px; border-radius: 4px; display: inline-flex; flex: none; }
-.legend .sample.proj { background: var(--accent); }
-.legend .sample.task {
+.legend .swatch {
+  width: 42px; height: 16px; border-radius: 4px;
+  display: inline-flex; flex: none; padding: 0;
+}
+.legend .swatch-proj { background: var(--accent); }
+.legend .swatch-task {
   background: color-mix(in srgb, var(--accent) 14%, var(--surface));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent);
   justify-content: flex-end; overflow: hidden;
 }
-.legend .sample.task i { width: 7px; background: var(--accent); align-self: stretch; border-radius: 0 3px 3px 0; }
+.legend .swatch-task i { width: 7px; background: var(--accent); align-self: stretch; border-radius: 0 3px 3px 0; }
 
 .cal-dow {
   display: grid; grid-template-columns: repeat(7, 1fr);

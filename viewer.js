@@ -9,14 +9,22 @@ let calCursor = new Date();      // 캘린더가 보고 있는 달
 let hideDone = true;
 let filterProject = '';
 
+const REFRESH_MS = 30_000;       // 게시된 내용을 이 주기로 다시 확인한다
+let lastRaw = null;              // 마지막으로 받은 원문 — 바뀐 게 없으면 다시 그리지 않는다
+
 /* ---------- 데이터 로드 ---------- */
+
+/** 캐시된 옛 스냅샷이 보이지 않도록 매번 새로 받는다. */
+async function fetchRaw() {
+  const res = await fetch(`data.json?t=${Date.now()}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.text();
+}
 
 async function boot() {
   try {
-    // 캐시된 옛 스냅샷이 보이지 않도록 매번 새로 받는다.
-    const res = await fetch(`data.json?t=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    data = T.migrate(await res.json());
+    lastRaw = await fetchRaw();
+    data = T.migrate(JSON.parse(lastRaw));
   } catch (e) {
     console.warn('data.json 을 불러오지 못했습니다.', e);
     showLoadError();
@@ -25,6 +33,41 @@ async function boot() {
   renderPublished();
   fillProjectFilter();
   render();
+
+  // 띄워만 놔도 최신이 보이도록 주기적으로 다시 확인한다.
+  setInterval(poll, REFRESH_MS);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+}
+
+/** 바뀐 게 있을 때만 다시 그린다. 보고 있는 탭·달·필터는 그대로 유지된다. */
+async function poll() {
+  if (document.hidden) return;            // 안 보이는 탭은 굳이 받지 않는다
+  let raw;
+  try {
+    raw = await fetchRaw();
+  } catch (e) {
+    return;                               // 일시적 실패는 다음 주기에 다시 시도
+  }
+  if (raw === lastRaw) return;
+  lastRaw = raw;
+  try {
+    data = T.migrate(JSON.parse(raw));
+  } catch (e) {
+    return;
+  }
+  renderPublished();
+  fillProjectFilter();
+  render();
+  flashUpdated();
+}
+
+let flashTimer;
+function flashUpdated() {
+  const el = $('#updated');
+  el.textContent = '방금 갱신됨';
+  el.hidden = false;
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => { el.hidden = true; }, 4000);
 }
 
 function showLoadError() {
@@ -49,12 +92,11 @@ function renderPublished() {
 
 function fillProjectFilter() {
   const sel = $('#filter-project');
-  for (const p of data.projects) {
-    const o = document.createElement('option');
-    o.value = p.id;
-    o.textContent = p.name;
-    sel.append(o);
-  }
+  sel.innerHTML = '<option value="">전체 프로젝트</option>' +
+    data.projects.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+  // 고르고 있던 프로젝트가 아직 있으면 선택을 유지한다.
+  if (filterProject && data.projects.some((p) => p.id === filterProject)) sel.value = filterProject;
+  else filterProject = '';
 }
 
 /* ---------- 렌더 ---------- */
