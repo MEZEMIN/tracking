@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "sample": true,
-  "publishedAt": "2026-09-02T09:00:00.000Z",
+  "publishedAt": "2026-09-02T20:29:40.116Z",
   "owner": "",
+  "sample": false,
   "projects": [
     {
       "id": "p-brand",
@@ -24,7 +24,7 @@
     },
     {
       "id": "p-ops",
-      "name": "농심 자판기",
+      "name": "농심 자판기 (게시 테스트)",
       "color": "#e0533d",
       "startDate": "2026-09-01",
       "dueDate": "2026-09-04",
