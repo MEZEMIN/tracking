@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>업무 입력</title>
+<link rel="stylesheet" href="../shared/base.css">
+<link rel="stylesheet" href="input.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <h1>업무 입력</h1>
+    <span class="saved" id="saved-at"></span>
+    <div class="actions">
+      <button class="ghost" id="btn-import">가져오기</button>
+      <button class="ghost" id="btn-export">백업 내보내기</button>
+      <button class="primary" id="btn-publish">게시용 파일 내보내기</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="cols">
+
+    <!-- 왼쪽: 프로젝트 + 업무 목록 -->
+    <div class="col-list">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>프로젝트</h2>
+          <button class="ghost" id="btn-add-project">+ 추가</button>
+        </div>
+        <div id="project-list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>업무</h2>
+          <button class="primary" id="btn-add-task">+ 새 업무</button>
+        </div>
+        <label class="check"><input type="checkbox" id="hide-done"> 완료 숨기기</label>
+        <div id="task-list"></div>
+      </section>
+    </div>
+
+    <!-- 오른쪽: 편집 폼 -->
+    <div class="col-form">
+      <section class="panel editor" id="editor">
+        <div class="empty">왼쪽에서 업무를 고르거나 <b>새 업무</b>를 눌러 시작하세요.</div>
+      </section>
+    </div>
+
+  </div>
+</main>
+
+<input type="file" id="file-input" accept="application/json" hidden>
+<div class="toast" id="toast" hidden></div>
+
+<script src="../shared/store.js"></script>
+<script src="input.js"></script>
+</body>
+</html>

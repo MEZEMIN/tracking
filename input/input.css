@@ -1,0 +1,99 @@
+/* 입력 앱 (편집기) */
+
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-in {
+  max-width: 1240px; margin: 0 auto; padding: 12px 20px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.topbar-in h1 { font-size: 17px; }
+.saved { font-size: 12px; color: var(--text-3); }
+.actions { display: flex; gap: 6px; margin-left: auto; }
+
+.wrap { max-width: 1240px; margin: 0 auto; padding: 18px 20px 80px; }
+.cols { display: grid; grid-template-columns: 380px 1fr; gap: 18px; align-items: start; }
+
+.panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px;
+}
+.panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.panel-head h2 { font-size: 14px; }
+.check { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); cursor: pointer; font-size: 13px; }
+.check input { width: auto; }
+
+/* 프로젝트 행 */
+.prow { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+.prow input[type='text'] { flex: 1; border-color: transparent; background: transparent; padding: 4px 6px; }
+.prow input[type='text']:hover { border-color: var(--border); }
+.prow .swatch {
+  width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--border-strong);
+  padding: 0; flex: none;
+}
+.swatches {
+  display: flex; gap: 5px; padding: 6px; background: var(--surface-2);
+  border-radius: var(--radius-sm); margin: 4px 0;
+}
+.swatches button { width: 20px; height: 20px; border-radius: 50%; padding: 0; border: 1px solid var(--border-strong); }
+
+/* 업무 행 */
+.trow {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  padding: 8px 8px; margin: 1px 0; border: 1px solid transparent;
+  border-radius: var(--radius-sm); background: transparent; text-align: left;
+}
+.trow:hover { background: var(--surface-2); }
+.trow.is-on { background: var(--accent-soft); border-color: var(--accent); }
+.trow.is-done .t { color: var(--text-3); text-decoration: line-through; }
+.trow .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 편집 폼 */
+.editor { padding: 18px 20px 24px; }
+.field { margin-bottom: 13px; }
+.field > label { display: block; font-size: 12px; color: var(--text-2); margin-bottom: 4px; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.title-input { font-size: 17px; font-weight: 600; padding: 8px 10px; }
+
+.range-row { display: flex; align-items: center; gap: 10px; }
+.range-row input[type='range'] { flex: 1; padding: 0; }
+.range-row .val { font-family: var(--mono); font-size: 13px; width: 42px; text-align: right; color: var(--text-2); }
+
+.seg { display: flex; gap: 4px; }
+.seg button { flex: 1; }
+.seg button.is-on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+
+/* 체크리스트 */
+.cl-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.cl-item input[type='checkbox'] { width: auto; flex: none; }
+.cl-item .del { padding: 3px 8px; flex: none; }
+
+.editor-foot { display: flex; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+.editor-foot .danger { margin-left: auto; color: var(--overdue); border-color: var(--border); }
+.editor-foot .danger:hover { background: var(--overdue-soft); border-color: var(--overdue); }
+
+/* 게시 안내 */
+.publish-note {
+  background: var(--surface-2); border-radius: var(--radius-sm);
+  padding: 10px 12px; font-size: 12px; color: var(--text-2); margin-top: 10px; line-height: 1.6;
+}
+.publish-note code {
+  font-family: var(--mono); font-size: 11px;
+  background: var(--surface); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border);
+}
+
+.toast {
+  position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: var(--bg); padding: 9px 18px;
+  border-radius: 100px; font-size: 13px; z-index: 60; box-shadow: var(--shadow);
+}
+
+@media (max-width: 900px) {
+  .cols { grid-template-columns: 1fr; }
+  .field-row, .field-row-3 { grid-template-columns: 1fr; }
+  .actions { width: 100%; margin-left: 0; }
+}

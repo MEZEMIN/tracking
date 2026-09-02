@@ -1,0 +1,174 @@
+/* 두 앱이 공유하는 디자인 토큰과 기본 요소 */
+
+:root {
+  color-scheme: light dark;
+
+  --bg: #f6f6f4;
+  --surface: #ffffff;
+  --surface-2: #f0efec;
+  --border: #e0ded8;
+  --border-strong: #cbc8c0;
+
+  --text: #1c1b19;
+  --text-2: #605c55;
+  --text-3: #918c83;
+
+  --accent: #2f6bd8;
+  --accent-soft: #e6edfb;
+
+  --overdue: #c8392b;
+  --overdue-soft: #fbe7e4;
+  --today: #d4720e;
+  --today-soft: #fdefdf;
+  --soon: #b08600;
+  --soon-soft: #fbf3d8;
+  --calm: #3f7a52;
+  --calm-soft: #e6f1e9;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 4px 12px rgba(0, 0, 0, .04);
+
+  --font: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard',
+          'Noto Sans KR', 'Segoe UI', system-ui, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #16161a;
+    --surface: #1f1f24;
+    --surface-2: #2a2a30;
+    --border: #33333b;
+    --border-strong: #45454f;
+
+    --text: #ececee;
+    --text-2: #a8a6ad;
+    --text-3: #76747c;
+
+    --accent: #6f9dee;
+    --accent-soft: #22304a;
+
+    --overdue: #f0796a;
+    --overdue-soft: #3b2320;
+    --today: #eda75a;
+    --today-soft: #3a2c1a;
+    --soon: #ddbc4a;
+    --soon-soft: #35301b;
+    --calm: #7cbf93;
+    --calm-soft: #1f2e24;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 12px rgba(0, 0, 0, .25);
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #16161a;
+  --surface: #1f1f24;
+  --surface-2: #2a2a30;
+  --border: #33333b;
+  --border-strong: #45454f;
+
+  --text: #ececee;
+  --text-2: #a8a6ad;
+  --text-3: #76747c;
+
+  --accent: #6f9dee;
+  --accent-soft: #22304a;
+
+  --overdue: #f0796a;
+  --overdue-soft: #3b2320;
+  --today: #eda75a;
+  --today-soft: #3a2c1a;
+  --soon: #ddbc4a;
+  --soon-soft: #35301b;
+  --calm: #7cbf93;
+  --calm-soft: #1f2e24;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 12px rgba(0, 0, 0, .25);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -.01em; }
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  transition: background .12s, border-color .12s;
+}
+button:hover { background: var(--surface-2); border-color: var(--border-strong); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 500;
+}
+button.primary:hover { filter: brightness(1.08); }
+button.ghost { background: transparent; border-color: transparent; color: var(--text-2); }
+button.ghost:hover { background: var(--surface-2); color: var(--text); }
+
+input, select, textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 9px;
+  width: 100%;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+textarea { resize: vertical; min-height: 64px; }
+
+/* D-Day 배지 */
+.dday {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  padding: 2px 7px;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+.dday[data-tone='overdue'] { background: var(--overdue-soft); color: var(--overdue); }
+.dday[data-tone='today']   { background: var(--today-soft);   color: var(--today); }
+.dday[data-tone='soon']    { background: var(--soon-soft);    color: var(--soon); }
+.dday[data-tone='week'],
+.dday[data-tone='later']   { background: var(--surface-2);    color: var(--text-2); }
+.dday[data-tone='done']    { background: var(--calm-soft);    color: var(--calm); }
+.dday[data-tone='none']    { display: none; }
+
+/* 프로젝트 색 점 */
+.dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-3);
+}
