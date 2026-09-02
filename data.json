@@ -1,8 +1,19 @@
 {
   "version": 1,
-  "sample": false,
-  "publishedAt": null,
+  "publishedAt": "2026-09-02T20:42:35.755Z",
   "owner": "",
-  "projects": [],
+  "sample": false,
+  "projects": [
+    {
+      "id": "omnfhy8x9b20",
+      "name": "농심 미팅 전 까지 디자인 시안 완성",
+      "color": "#e0533d",
+      "startDate": "2026-09-02",
+      "dueDate": "2026-09-10",
+      "done": false,
+      "notes": "농심 마케팅 담당자 미팅 전까지 디자인 시안 완성하기",
+      "updatedAt": "2026-09-02T20:41:34.857Z"
+    }
+  ],
   "tasks": []
 }
