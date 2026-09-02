@@ -26,21 +26,24 @@
 .check { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); cursor: pointer; font-size: 13px; }
 .check input { width: auto; }
 
-/* 프로젝트 행 */
-.prow { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
-.prow input[type='text'] { flex: 1; border-color: transparent; background: transparent; padding: 4px 6px; }
-.prow input[type='text']:hover { border-color: var(--border); }
-.prow .swatch {
-  width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--border-strong);
-  padding: 0; flex: none;
-}
+/* 색상 팔레트 */
 .swatches {
-  display: flex; gap: 5px; padding: 6px; background: var(--surface-2);
-  border-radius: var(--radius-sm); margin: 4px 0;
+  display: flex; gap: 7px; padding: 8px; background: var(--surface-2);
+  border-radius: var(--radius-sm);
 }
-.swatches button { width: 20px; height: 20px; border-radius: 50%; padding: 0; border: 1px solid var(--border-strong); }
+.swatches button {
+  width: 26px; height: 26px; border-radius: 50%; padding: 0;
+  border: 2px solid transparent; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12);
+}
+.swatches button.is-on { border-color: var(--text); transform: scale(1.05); }
 
-/* 업무 행 */
+.hint { color: var(--text-3); font-size: 13px; padding: 4px 0; line-height: 1.5; }
+.editor-kind {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--text-3); margin-bottom: 8px;
+}
+
+/* 목록 행 */
 .trow {
   display: flex; align-items: center; gap: 9px; width: 100%;
   padding: 8px 8px; margin: 1px 0; border: 1px solid transparent;
@@ -49,7 +52,11 @@
 .trow:hover { background: var(--surface-2); }
 .trow.is-on { background: var(--accent-soft); border-color: var(--accent); }
 .trow.is-done .t { color: var(--text-3); text-decoration: line-through; }
-.trow .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trow .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 5px; }
+.trow .n {
+  font-family: var(--mono); font-size: 11px; color: var(--text-3);
+  background: var(--surface-2); border-radius: 100px; padding: 1px 7px; flex: none;
+}
 
 /* 편집 폼 */
 .editor { padding: 18px 20px 24px; }

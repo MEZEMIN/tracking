@@ -161,45 +161,124 @@ function taskRow(t) {
 
 /* ---------- 캘린더 ---------- */
 
+/*
+ * 한 주를 7칸 그리드 두 겹으로 그린다.
+ *  - 아래: 날짜 칸 (.cell)
+ *  - 위: 여러 날에 걸치는 막대들 (.lanes) — grid-column 으로 기간만큼 늘린다
+ * 프로젝트 일정은 위 레인부터, 내 일정은 그 아래 레인부터 채운다.
+ */
 function renderCalendar() {
   const y = calCursor.getFullYear();
   const m = calCursor.getMonth();
   $('#cal-title').textContent = `${y}년 ${m + 1}월`;
 
   const first = new Date(y, m, 1);
-  const start = new Date(first);
-  start.setDate(1 - first.getDay());          // 그 주의 일요일부터 시작
+  const gridStart = new Date(first);
+  gridStart.setDate(1 - first.getDay());      // 그 주의 일요일부터
 
-  const byDate = new Map();
-  for (const t of visibleTasks()) {
-    if (!t.dueDate) continue;
-    if (!byDate.has(t.dueDate)) byDate.set(t.dueDate, []);
-    byDate.get(t.dueDate).push(t);
+  const projItems = data.projects
+    .map((p, order) => ({ ...p, order }))
+    .filter((p) => (p.startDate || p.dueDate) && !(filterProject && p.id !== filterProject))
+    .filter((p) => !(hideDone && p.done))
+    .map((p) => ({
+      kind: 'project', id: p.id, color: p.color, label: p.name, order: p.order,
+      start: p.startDate, end: p.dueDate,
+      done: p.done, burning: T.isProjectBurning(p),
+    }));
+
+  const taskItems = visibleTasks()
+    .filter((t) => t.startDate || t.dueDate)
+    .map((t) => {
+      const pr = T.projectOf(data, t);
+      return {
+        kind: 'task', id: t.id, color: pr ? pr.color : null, label: t.title,
+        start: t.startDate, end: t.dueDate, done: t.status === 'done',
+      };
+    });
+
+  // 프로젝트 줄은 달 전체에서 레인을 한 번만 배정한다 — 주가 바뀌어도 같은 줄에 머문다.
+  const gridStartISO = T.toISO(gridStart);
+  const gridEndISO = T.addDays(gridStartISO, 41);
+  const projSpans = [];
+  for (const it of projItems) {
+    let a = it.start || it.end;
+    let b = it.end || it.start;
+    if (a > b) [a, b] = [b, a];
+    if (b < gridStartISO || a > gridEndISO) continue;
+    projSpans.push({
+      id: it.id,
+      s: Math.max(0, T.daysUntil(a, gridStartISO)),
+      e: Math.min(41, T.daysUntil(b, gridStartISO)),
+    });
   }
+  const projLaneCount = T.packLanes(projSpans, 0);
+  const laneOf = Object.fromEntries(projSpans.map((x) => [x.id, x.lane]));
 
   const today = T.todayISO();
   let html = '';
-  for (let i = 0; i < 42; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    const iso = T.toISO(d);
-    const out = d.getMonth() !== m;
-    const items = T.sortTasks(byDate.get(iso) || []);
 
-    const pills = items.slice(0, 3).map((t) => {
-      const p = T.projectOf(data, t);
-      return `<button class="pill${t.status === 'done' ? ' is-done' : ''}" data-id="${esc(t.id)}" title="${esc(t.title)}">
-        <i class="dot" style="background:${esc(p ? p.color : 'var(--text-3)')}"></i><span>${esc(t.title)}</span>
-      </button>`;
-    }).join('');
-    const more = items.length > 3 ? `<div class="more">+${items.length - 3}건</div>` : '';
+  for (let w = 0; w < 6; w++) {
+    const ws = new Date(gridStart);
+    ws.setDate(gridStart.getDate() + w * 7);
+    const wsISO = T.toISO(ws);
 
-    html += `<div class="cell${out ? ' is-out' : ''}${iso === today ? ' is-today' : ''}">
-      <div class="d">${d.getDate()}</div>${pills}${more}
+    // 프로젝트는 미리 정해둔 레인을 그대로 쓰고, 내 일정만 그 아래에서 주별로 채운다.
+    const projBars = clip(projItems, wsISO).map((b) => ({ ...b, lane: laneOf[b.id] }));
+    const taskBars = clip(taskItems, wsISO);
+    T.packLanes(taskBars, projLaneCount);
+    const all = [...projBars, ...taskBars];
+    const laneCount = all.length ? Math.max(...all.map((b) => b.lane)) + 1 : 0;
+
+    let cells = '';
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(ws);
+      d.setDate(ws.getDate() + i);
+      const iso = T.toISO(d);
+      cells += `<div class="cell${d.getMonth() !== m ? ' is-out' : ''}${iso === today ? ' is-today' : ''}">
+        <div class="d">${d.getDate()}</div>
+      </div>`;
+    }
+
+    const bars = all.map(barHTML).join('');
+    html += `<div class="week" style="--lanes:${laneCount}">
+      ${cells}<div class="lanes">${bars}</div>
     </div>`;
   }
+
   $('#cal-grid').innerHTML = html;
   bindTaskClicks($('#cal-grid'));
+}
+
+/** 이번 주와 겹치는 항목만 골라 열 번호를 붙인다. */
+function clip(items, weekStartISO, cmp) {
+  const out = [];
+  for (const it of items) {
+    const sp = T.spanInWeek(it.start, it.end, weekStartISO);
+    if (sp) out.push({ ...it, ...sp });
+  }
+  return out.sort(cmp || ((a, b) => a.s - b.s || b.e - a.e));
+}
+
+function barHTML(b) {
+  const cls = [
+    'cbar',
+    b.kind === 'project' ? 'cbar-proj' : 'cbar-task',
+    b.done ? 'is-done' : '',
+    b.openStart ? 'open-start' : '',
+    b.openEnd ? 'open-end' : '',
+    b.burning ? 'is-burning' : '',
+  ].filter(Boolean).join(' ');
+
+  const style = `grid-column:${b.s + 1}/${b.e + 2};grid-row:${b.lane + 1};` +
+                `--c:${b.color || 'var(--border-strong)'}`;
+
+  // 내 일정은 막대 끝(= 마감 지점)에만 프로젝트 색을 칠한다.
+  const cap = b.kind === 'task' && !b.openEnd ? '<i class="cap"></i>' : '';
+  const flame = b.burning ? T.FLAME_HTML : '';
+
+  return `<button class="${cls}" style="${style}" data-id="${esc(b.id)}" data-kind="${b.kind}" title="${esc(b.label)}">
+    ${flame}<span class="lbl">${esc(b.label)}</span>${cap}
+  </button>`;
 }
 
 /* ---------- 프로젝트 ---------- */
@@ -216,28 +295,72 @@ function renderProjects() {
     const open = items.filter((t) => t.status !== 'done' && t.dueDate);
     const next = T.sortTasks(open)[0];
     const overdue = open.filter((t) => T.daysUntil(t.dueDate) < 0).length;
+    const burning = T.isProjectBurning(p);
 
-    return `<div class="pcard">
+    const period = (p.startDate || p.dueDate)
+      ? `${p.startDate ? T.formatDate(p.startDate) : '—'} ~ ${p.dueDate ? T.formatDate(p.dueDate) : '—'}`
+      : '기간 미정';
+
+    return `<div class="pcard${burning ? ' is-burning' : ''}${p.done ? ' is-closed' : ''}" data-id="${esc(p.id)}" data-kind="project">
       <div class="pcard-head">
         <i class="dot" style="background:${esc(p.color)}"></i>
-        <h3>${esc(p.name)}</h3>
+        <h3>${burning ? T.FLAME_HTML : ''}${esc(p.name)}</h3>
+        ${p.dueDate ? `<span class="dday${burning ? ' is-burning' : ''}" data-tone="${T.ddayTone(p.dueDate, p.done ? 'done' : 'doing')}">${T.ddayLabel(p.dueDate)}</span>` : ''}
         <span class="count">${done}/${items.length} 완료</span>
       </div>
+      <div class="pperiod">${esc(period)}</div>
       <div class="pbar"><i style="width:${pct}%;background:${esc(p.color)}"></i></div>
       <div class="pcard-foot">
-        ${next ? `<span>다음 마감: ${esc(next.title)} <span class="dday" data-tone="${T.ddayTone(next.dueDate, next.status)}">${T.ddayLabel(next.dueDate)}</span></span>` : '<span>예정된 마감 없음</span>'}
+        ${next ? `<span>다음 일정: ${esc(next.title)} <span class="dday" data-tone="${T.ddayTone(next.dueDate, next.status)}">${T.ddayLabel(next.dueDate)}</span></span>` : '<span>예정된 일정 없음</span>'}
         ${overdue ? `<span style="color:var(--overdue)">지연 ${overdue}건</span>` : ''}
       </div>
     </div>`;
   }).join('');
+  bindTaskClicks($('#project-cards'));
 }
 
 /* ---------- 상세 패널 ---------- */
 
 function bindTaskClicks(root) {
   root.querySelectorAll('[data-id]').forEach((el) => {
-    el.addEventListener('click', () => openDetail(el.dataset.id));
+    el.addEventListener('click', () => {
+      if (el.dataset.kind === 'project') openProjectDetail(el.dataset.id);
+      else openDetail(el.dataset.id);
+    });
   });
+}
+
+/** 프로젝트 막대를 누르면 그 프로젝트 개요와 속한 업무 목록을 보여준다. */
+function openProjectDetail(id) {
+  const p = data.projects.find((x) => x.id === id);
+  if (!p) return;
+  const items = T.sortTasks(data.tasks.filter((t) => t.projectId === p.id));
+  const done = items.filter((t) => t.status === 'done').length;
+  const pct = items.length ? Math.round((done / items.length) * 100) : 0;
+  const burning = T.isProjectBurning(p);
+
+  const rows = [];
+  if (p.startDate || p.dueDate) {
+    rows.push(['기간', `${p.startDate ? esc(T.formatDate(p.startDate)) : '—'} ~ ${p.dueDate ? esc(T.formatDate(p.dueDate)) : '—'}`]);
+  }
+  if (p.dueDate) {
+    rows.push(['마감', `<span class="dday${burning ? ' is-burning' : ''}" data-tone="${T.ddayTone(p.dueDate, p.done ? 'done' : 'doing')}">${T.ddayLabel(p.dueDate)}</span>`]);
+  }
+  rows.push(['진행', `<span class="pctrow"><span class="bar" style="width:120px"><i style="width:${pct}%;background:${esc(p.color)}"></i></span> ${done}/${items.length}</span>`]);
+  if (p.notes) rows.push(['메모', `<div class="notes">${esc(p.notes)}</div>`]);
+  if (items.length) {
+    rows.push(['업무', `<ul class="cl">${items.map((t) =>
+      `<li class="${t.status === 'done' ? 'done' : ''}">${t.status === 'done' ? '☑' : '☐'} ${esc(t.title)}` +
+      `${t.dueDate ? ` <span class="dday" data-tone="${T.ddayTone(t.dueDate, t.status)}">${T.ddayLabel(t.dueDate)}</span>` : ''}</li>`).join('')}</ul>`]);
+  }
+
+  $('#detail').innerHTML =
+    `<button class="ghost close" id="detail-close" aria-label="닫기">✕</button>
+     <div class="detail-kind"><i class="dot" style="background:${esc(p.color)}"></i> 프로젝트 일정</div>
+     <h2>${burning ? T.FLAME_HTML : ''}${esc(p.name)}</h2>
+     ${rows.map(([k, v]) => `<div class="row"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}`;
+  $('#detail-backdrop').hidden = false;
+  $('#detail-close').addEventListener('click', closeDetail);
 }
 
 function openDetail(id) {
@@ -267,6 +390,7 @@ function openDetail(id) {
 
   $('#detail').innerHTML =
     `<button class="ghost close" id="detail-close" aria-label="닫기">✕</button>
+     <div class="detail-kind"><i class="dot" style="background:${esc(p ? p.color : 'var(--border-strong)')}"></i> 내 일정</div>
      <h2>${esc(t.title)}</h2>
      ${rows.map(([k, v]) => `<div class="row"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}`;
   $('#detail-backdrop').hidden = false;

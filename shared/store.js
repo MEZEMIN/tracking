@@ -88,6 +88,79 @@ function formatDate(iso) {
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${week})`;
 }
 
+/* ---------- 마감 임박 (불타는 이펙트) ---------- */
+
+/** 마감까지 이 일수 이하로 남으면 "불탄다". 지난 것도 포함. */
+const BURN_DAYS = 3;
+
+function isBurning(dueISO, isDone) {
+  if (!dueISO || isDone) return false;
+  const n = daysUntil(dueISO);
+  return n !== null && n <= BURN_DAYS;
+}
+
+/** 프로젝트는 자체 마감일 기준. 완료 표시했으면 타지 않는다. */
+function isProjectBurning(project) {
+  return isBurning(project.dueDate, project.done);
+}
+
+/** 겹친 불꽃 3겹. 흔들림은 CSS 가 준다. */
+const FLAME_HTML =
+  '<span class="flame" aria-hidden="true">' +
+  '<svg viewBox="0 0 24 32" preserveAspectRatio="xMidYMax meet">' +
+  '<path class="f1" d="M12 1S4.6 10 4.6 18.4a7.4 7.4 0 0 0 14.8 0C19.4 10 12 1 12 1Z"/>' +
+  '<path class="f2" d="M12.4 10.5S8.2 16 8.2 20.6a3.9 3.9 0 0 0 7.8 0c0-4.6-3.6-10.1-3.6-10.1Z"/>' +
+  '<path class="f3" d="M12 18.6S10.1 21.6 10.1 23.4a1.9 1.9 0 0 0 3.8 0c0-1.8-1.9-4.8-1.9-4.8Z"/>' +
+  '</svg></span>';
+
+/* ---------- 캘린더 레이아웃 ---------- */
+
+function addDays(iso, n) {
+  const d = fromISO(iso);
+  d.setDate(d.getDate() + n);
+  return toISO(d);
+}
+
+/**
+ * [startISO, endISO] 기간이 weekStartISO 로 시작하는 7일 주와 겹치는 구간을 구한다.
+ * 겹치지 않으면 null. s/e 는 0~6 열 번호(양끝 포함),
+ * openStart/openEnd 는 막대가 이 주 밖으로 이어지는지 여부 — 끝을 둥글게 할지 판단에 쓴다.
+ */
+function spanInWeek(startISO, endISO, weekStartISO) {
+  if (!startISO && !endISO) return null;
+  let a = startISO || endISO;
+  let b = endISO || startISO;
+  if (a > b) [a, b] = [b, a];
+
+  const ws = weekStartISO;
+  const we = addDays(weekStartISO, 6);
+  if (b < ws || a > we) return null;
+
+  const clipA = a < ws ? ws : a;
+  const clipB = b > we ? we : b;
+  return {
+    s: daysUntil(clipA, ws),
+    e: daysUntil(clipB, ws),
+    openStart: a < ws,
+    openEnd: b > we,
+  };
+}
+
+/**
+ * 겹치는 막대가 서로 가리지 않도록 레인(행)을 배정한다.
+ * 배열 순서를 우선하는 단순 그리디 — 앞쪽 항목이 위 레인을 차지한다.
+ */
+function packLanes(bars, firstLane) {
+  const lanes = [];          // lanes[i] = 그 레인에 이미 놓인 [s,e] 목록
+  for (const bar of bars) {
+    let i = 0;
+    while (lanes[i] && lanes[i].some(([s, e]) => bar.s <= e && bar.e >= s)) i++;
+    (lanes[i] = lanes[i] || []).push([bar.s, bar.e]);
+    bar.lane = (firstLane || 0) + i;
+  }
+  return lanes.length;
+}
+
 /* ---------- 정렬 ---------- */
 
 /**
@@ -154,6 +227,15 @@ function migrate(data) {
   const base = emptyData();
   const out = { ...base, ...data };
   out.projects = Array.isArray(out.projects) ? out.projects : [];
+  out.projects = out.projects.map((p) => ({
+    id: p.id || uid(),
+    name: p.name || '',
+    color: p.color || PROJECT_COLORS[0],
+    startDate: p.startDate || null,
+    dueDate: p.dueDate || null,
+    done: !!p.done,
+    notes: p.notes || '',
+  }));
   out.tasks = Array.isArray(out.tasks) ? out.tasks : [];
   out.tasks = out.tasks.map((t) => ({
     id: t.id || uid(),
@@ -178,6 +260,8 @@ function migrate(data) {
 window.Tracking = {
   STORAGE_KEY, SCHEMA_VERSION, PRIORITIES, STATUSES, PROJECT_COLORS,
   uid, emptyData, migrate, loadLocal, saveLocal,
-  todayISO, toISO, fromISO, daysUntil, ddayLabel, ddayTone, formatDate,
+  todayISO, toISO, fromISO, addDays, daysUntil, ddayLabel, ddayTone, formatDate,
+  BURN_DAYS, isBurning, isProjectBurning, FLAME_HTML,
+  spanInWeek, packLanes,
   sortTasks, checklistProgress, effectiveProgress, projectOf,
 };

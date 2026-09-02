@@ -4,75 +4,173 @@
   "publishedAt": "2026-09-02T09:00:00.000Z",
   "owner": "",
   "projects": [
-    { "id": "p-brand", "name": "브랜드 리뉴얼", "color": "#3f74c4" },
-    { "id": "p-app",   "name": "모바일 앱 개편", "color": "#4f9d4f" },
-    { "id": "p-ops",   "name": "내부 운영",     "color": "#e08a2e" }
+    {
+      "id": "p-brand",
+      "name": "브랜드 리뉴얼",
+      "color": "#3f74c4",
+      "startDate": "2026-08-17",
+      "dueDate": "2026-09-11",
+      "done": false,
+      "notes": ""
+    },
+    {
+      "id": "p-app",
+      "name": "모바일 앱 개편",
+      "color": "#4f9d4f",
+      "startDate": "2026-08-31",
+      "dueDate": "2026-09-25",
+      "done": false,
+      "notes": ""
+    },
+    {
+      "id": "p-ops",
+      "name": "농심 자판기",
+      "color": "#e0533d",
+      "startDate": "2026-09-01",
+      "dueDate": "2026-09-04",
+      "done": false,
+      "notes": ""
+    }
   ],
   "tasks": [
     {
-      "id": "t1", "title": "로고 시안 3종 최종 검토", "projectId": "p-brand",
-      "priority": "high", "status": "doing", "progress": 70,
-      "startDate": "2026-08-24", "dueDate": "2026-08-28",
-      "estimateHours": 8, "spentHours": 6,
+      "id": "t1",
+      "title": "로고 시안 3종 최종 검토",
+      "projectId": "p-brand",
+      "priority": "high",
+      "status": "doing",
+      "progress": 70,
+      "startDate": "2026-08-24",
+      "dueDate": "2026-08-28",
+      "estimateHours": 8,
+      "spentHours": 6,
       "notes": "시안 B가 유력. 대표님 피드백 반영 후 확정.",
       "checklist": [
-        { "id": "c1", "text": "시안 A 컬러 변형", "done": true },
-        { "id": "c2", "text": "시안 B 타이포 조정", "done": true },
-        { "id": "c3", "text": "최종 프레젠테이션 정리", "done": false }
+        {
+          "id": "c1",
+          "text": "시안 A 컬러 변형",
+          "done": true
+        },
+        {
+          "id": "c2",
+          "text": "시안 B 타이포 조정",
+          "done": true
+        },
+        {
+          "id": "c3",
+          "text": "최종 프레젠테이션 정리",
+          "done": false
+        }
       ],
-      "createdAt": "2026-08-24T00:00:00.000Z", "updatedAt": "2026-09-01T00:00:00.000Z"
+      "createdAt": "2026-08-24T00:00:00.000Z",
+      "updatedAt": "2026-09-01T00:00:00.000Z"
     },
     {
-      "id": "t2", "title": "주간 업무 보고서 작성", "projectId": "p-ops",
-      "priority": "mid", "status": "todo", "progress": 0,
-      "startDate": null, "dueDate": "2026-09-02",
-      "estimateHours": 2, "spentHours": null,
-      "notes": "", "checklist": [],
-      "createdAt": "2026-09-01T00:00:00.000Z", "updatedAt": "2026-09-01T00:00:00.000Z"
+      "id": "t2",
+      "title": "주간 업무 보고서 작성",
+      "projectId": "p-ops",
+      "priority": "mid",
+      "status": "todo",
+      "progress": 0,
+      "startDate": null,
+      "dueDate": "2026-09-02",
+      "estimateHours": 2,
+      "spentHours": null,
+      "notes": "",
+      "checklist": [],
+      "createdAt": "2026-09-01T00:00:00.000Z",
+      "updatedAt": "2026-09-01T00:00:00.000Z"
     },
     {
-      "id": "t3", "title": "온보딩 화면 프로토타입", "projectId": "p-app",
-      "priority": "high", "status": "doing", "progress": 40,
-      "startDate": "2026-08-31", "dueDate": "2026-09-04",
-      "estimateHours": 16, "spentHours": 7,
+      "id": "t3",
+      "title": "온보딩 화면 프로토타입",
+      "projectId": "p-app",
+      "priority": "high",
+      "status": "doing",
+      "progress": 40,
+      "startDate": "2026-09-01",
+      "dueDate": "2026-09-04",
+      "estimateHours": 16,
+      "spentHours": 7,
       "notes": "3단계 온보딩. 스킵 동선 반드시 포함.",
       "checklist": [
-        { "id": "c4", "text": "와이어프레임", "done": true },
-        { "id": "c5", "text": "인터랙션 정의", "done": false }
+        {
+          "id": "c4",
+          "text": "와이어프레임",
+          "done": true
+        },
+        {
+          "id": "c5",
+          "text": "인터랙션 정의",
+          "done": false
+        }
       ],
-      "createdAt": "2026-08-31T00:00:00.000Z", "updatedAt": "2026-09-01T00:00:00.000Z"
+      "createdAt": "2026-08-31T00:00:00.000Z",
+      "updatedAt": "2026-09-01T00:00:00.000Z"
     },
     {
-      "id": "t4", "title": "브랜드 가이드라인 문서 초안", "projectId": "p-brand",
-      "priority": "mid", "status": "todo", "progress": 0,
-      "startDate": null, "dueDate": "2026-09-08",
-      "estimateHours": 12, "spentHours": null,
-      "notes": "", "checklist": [],
-      "createdAt": "2026-09-01T00:00:00.000Z", "updatedAt": "2026-09-01T00:00:00.000Z"
+      "id": "t4",
+      "title": "브랜드 가이드라인 문서 초안",
+      "projectId": "p-brand",
+      "priority": "mid",
+      "status": "todo",
+      "progress": 0,
+      "startDate": "2026-09-07",
+      "dueDate": "2026-09-08",
+      "estimateHours": 12,
+      "spentHours": null,
+      "notes": "",
+      "checklist": [],
+      "createdAt": "2026-09-01T00:00:00.000Z",
+      "updatedAt": "2026-09-01T00:00:00.000Z"
     },
     {
-      "id": "t5", "title": "앱 스토어 스크린샷 리소스 정리", "projectId": "p-app",
-      "priority": "low", "status": "todo", "progress": 0,
-      "startDate": null, "dueDate": "2026-09-22",
-      "estimateHours": 4, "spentHours": null,
-      "notes": "", "checklist": [],
-      "createdAt": "2026-09-01T00:00:00.000Z", "updatedAt": "2026-09-01T00:00:00.000Z"
+      "id": "t5",
+      "title": "앱 스토어 스크린샷 리소스 정리",
+      "projectId": "p-app",
+      "priority": "low",
+      "status": "todo",
+      "progress": 0,
+      "startDate": null,
+      "dueDate": "2026-09-22",
+      "estimateHours": 4,
+      "spentHours": null,
+      "notes": "",
+      "checklist": [],
+      "createdAt": "2026-09-01T00:00:00.000Z",
+      "updatedAt": "2026-09-01T00:00:00.000Z"
     },
     {
-      "id": "t6", "title": "협업 도구 라이선스 갱신 검토", "projectId": "p-ops",
-      "priority": "low", "status": "todo", "progress": 0,
-      "startDate": null, "dueDate": null,
-      "estimateHours": null, "spentHours": null,
-      "notes": "연말 전까지만 결정하면 됨.", "checklist": [],
-      "createdAt": "2026-09-01T00:00:00.000Z", "updatedAt": "2026-09-01T00:00:00.000Z"
+      "id": "t6",
+      "title": "협업 도구 라이선스 갱신 검토",
+      "projectId": "p-ops",
+      "priority": "low",
+      "status": "todo",
+      "progress": 0,
+      "startDate": null,
+      "dueDate": null,
+      "estimateHours": null,
+      "spentHours": null,
+      "notes": "연말 전까지만 결정하면 됨.",
+      "checklist": [],
+      "createdAt": "2026-09-01T00:00:00.000Z",
+      "updatedAt": "2026-09-01T00:00:00.000Z"
     },
     {
-      "id": "t7", "title": "8월 킥오프 미팅 정리", "projectId": "p-brand",
-      "priority": "mid", "status": "done", "progress": 100,
-      "startDate": "2026-08-18", "dueDate": "2026-08-20",
-      "estimateHours": 3, "spentHours": 3,
-      "notes": "", "checklist": [],
-      "createdAt": "2026-08-18T00:00:00.000Z", "updatedAt": "2026-08-20T00:00:00.000Z"
+      "id": "t7",
+      "title": "8월 킥오프 미팅 정리",
+      "projectId": "p-brand",
+      "priority": "mid",
+      "status": "done",
+      "progress": 100,
+      "startDate": "2026-08-18",
+      "dueDate": "2026-08-20",
+      "estimateHours": 3,
+      "spentHours": 3,
+      "notes": "",
+      "checklist": [],
+      "createdAt": "2026-08-18T00:00:00.000Z",
+      "updatedAt": "2026-08-20T00:00:00.000Z"
     }
   ]
 }

@@ -172,3 +172,62 @@ textarea { resize: vertical; min-height: 64px; }
   text-align: center;
   color: var(--text-3);
 }
+
+/* ---------- 불타는 이펙트 (마감 임박) ---------- */
+
+.flame {
+  display: inline-block;
+  width: 12px; height: 16px;
+  flex: none;
+  vertical-align: -3px;
+  filter: drop-shadow(0 0 4px rgba(255, 122, 24, .9));
+}
+.flame svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.flame path {
+  transform-box: view-box;
+  transform-origin: 12px 27px;              /* 불꽃 밑동에서 흔들린다 */
+  animation: flame-flicker 700ms ease-in-out infinite alternate;
+}
+.flame .f1 { fill: #ff3708; }
+.flame .f2 { fill: #ff9410; animation-delay: -230ms; }
+.flame .f3 { fill: #ffe886; animation-delay: -450ms; }
+
+@keyframes flame-flicker {
+  0%   { transform: scale(.88, .9) translateX(-.5px);  opacity: .88; }
+  50%  { transform: scale(1.06, 1.16);                 opacity: 1; }
+  100% { transform: scale(.97, 1.02) translateX(.5px); opacity: .94; }
+}
+
+/* 타고 있는 요소: 잔불 글로우 + 열기 훑고 지나가기 */
+.is-burning { position: relative; animation: ember 1.3s ease-in-out infinite alternate; }
+@keyframes ember {
+  from { box-shadow: 0 0 4px 0 rgba(255, 96, 24, .3); }
+  to   { box-shadow: 0 0 14px 2px rgba(255, 122, 32, .7); }
+}
+/* 불씨가 훑고 지나가는 결. 글씨를 덮지 않도록 작은 막대에만 붙인다. */
+.heat-sweep::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(100deg,
+    transparent 20%,
+    rgba(255, 176, 48, .5) 40%,
+    rgba(255, 236, 168, .72) 50%,
+    rgba(255, 130, 26, .5) 60%,
+    transparent 82%);
+  background-size: 240% 100%;
+  animation: heat 1.9s linear infinite;
+}
+@keyframes heat {
+  from { background-position: 150% 0; }
+  to   { background-position: -70% 0; }
+}
+
+/* D-Day 배지가 탈 때는 확실히 빨갛게 */
+.dday.is-burning { background: var(--overdue-soft); color: var(--overdue); }
+
+@media (prefers-reduced-motion: reduce) {
+  .flame path, .is-burning, .heat-sweep::before { animation: none; }
+  .is-burning { box-shadow: 0 0 8px 1px rgba(255, 122, 32, .45); }
+}
