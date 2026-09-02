@@ -447,12 +447,76 @@ $('#btn-export').addEventListener('click', () => {
   toast('백업 파일을 내려받았습니다.');
 });
 
-$('#btn-publish').addEventListener('click', () => {
+/*
+ * 게시.
+ *
+ * 로컬 게시 서버(node serve.js) 위에서 열렸다면 버튼 한 번으로
+ * data.json 쓰기 → 커밋 → 푸시까지 서버가 처리한다.
+ * GitHub Pages 등 그냥 정적으로 열린 경우엔 파일 다운로드로 되돌아간다.
+ */
+let localServer = null;
+
+async function detectLocalServer() {
+  try {
+    const r = await fetch('/api/status', { cache: 'no-store' });
+    if (!r.ok) return;
+    const info = await r.json();
+    if (!info.ok) return;
+    localServer = info;
+  } catch (e) {
+    // 로컬 서버가 아닌 곳에서 열렸다 — 다운로드 방식으로 간다.
+  }
+  renderPublishMode();
+}
+
+function renderPublishMode() {
+  const btn = $('#btn-publish');
+  const badge = $('#mode');
+  if (localServer) {
+    btn.textContent = '게시';
+    btn.title = 'data.json 을 커밋하고 푸시합니다';
+    badge.textContent = '로컬 게시 서버 연결됨';
+    badge.dataset.state = 'live';
+  } else {
+    btn.textContent = '게시용 파일 내보내기';
+    btn.title = 'data.json 을 내려받아 직접 저장소에 올려야 합니다';
+    badge.textContent = '';
+    badge.dataset.state = '';
+  }
+}
+
+$('#btn-publish').addEventListener('click', async () => {
   data.publishedAt = new Date().toISOString();
   data.sample = false;   // 저장소에 들어있던 샘플 표시를 지운다
   commit();
-  download('data.json', JSON.stringify(data, null, 2));
-  showPublishNote();
+
+  if (!localServer) {
+    download('data.json', JSON.stringify(data, null, 2));
+    showPublishNote();
+    return;
+  }
+
+  const btn = $('#btn-publish');
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '게시 중…';
+  try {
+    const r = await fetch('/api/publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const out = await r.json();
+    if (!out.ok) throw new Error(out.error || '알 수 없는 오류');
+    toast(out.unchanged
+      ? '지난 게시 이후 바뀐 내용이 없습니다.'
+      : `게시했습니다 (${out.commit}). 1분 안에 조회 앱에 반영됩니다.`);
+  } catch (e) {
+    alert(`게시하지 못했습니다.\n\n${e.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
 });
 
 function showPublishNote() {
@@ -464,8 +528,8 @@ function showPublishNote() {
   note.innerHTML =
     '<b>data.json</b> 을 내려받았습니다. 저장소 최상단에 덮어쓰고 커밋·푸시하면 ' +
     '조회 앱에 반영됩니다.<br>' +
-    '<code>cp ~/Downloads/data.json .</code> → ' +
-    '<code>git add data.json &amp;&amp; git commit -m "업무 현황 갱신" &amp;&amp; git push</code>';
+    '버튼 한 번으로 끝내려면 저장소에서 <code>node serve.js</code> 를 띄우고 ' +
+    '<code>localhost:8765/input/</code> 로 여세요.';
   $('#editor').prepend(note);
 }
 
@@ -498,3 +562,4 @@ function esc(s) {
 
 renderAll();
 stampSaved();
+detectLocalServer();
