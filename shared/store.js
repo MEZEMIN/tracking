@@ -15,6 +15,17 @@ const STATUSES = [
   { id: 'done', label: '완료' },
 ];
 
+/**
+ * 아직 날짜가 안 정해진 프로젝트를 위한 "대략" 구간.
+ * to: 0 은 그 달의 말일을 뜻한다.
+ */
+const APPROX_PARTS = [
+  { id: 'early', label: '초',   from: 1,  to: 10 },
+  { id: 'mid',   label: '중순', from: 11, to: 20 },
+  { id: 'late',  label: '말',   from: 21, to: 0 },
+  { id: 'whole', label: '전체', from: 1,  to: 0 },
+];
+
 const PROJECT_COLORS = [
   '#e0533d', '#e08a2e', '#c9a227', '#4f9d4f',
   '#3d8f8f', '#3f74c4', '#7a5cc4', '#c04f92',
@@ -88,6 +99,40 @@ function formatDate(iso) {
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${week})`;
 }
 
+/* ---------- 프로젝트 기간 ---------- */
+
+function lastDayOf(year, month1) {          // month1 은 1~12
+  return new Date(year, month1, 0).getDate();
+}
+
+/**
+ * 프로젝트의 실제 날짜 구간. 대략 일정이면 그 달의 해당 구간으로 펼친다.
+ * 날짜가 하나도 없으면 start/end 가 모두 null.
+ */
+function projectRange(p) {
+  if (p.dateMode === 'approx' && p.approxMonth) {
+    const [y, m] = p.approxMonth.split('-').map(Number);
+    const last = lastDayOf(y, m);
+    const part = APPROX_PARTS.find((x) => x.id === p.approxPart) || APPROX_PARTS[3];
+    const from = Math.min(part.from, last);
+    const to = part.to === 0 ? last : Math.min(part.to, last);
+    const pad = (n) => String(n).padStart(2, '0');
+    return { start: `${p.approxMonth}-${pad(from)}`, end: `${p.approxMonth}-${pad(to)}`, approx: true };
+  }
+  return { start: p.startDate || null, end: p.dueDate || null, approx: false };
+}
+
+/** "2026년 9월 말 (대략)" 또는 "9월 1일 (화) ~ 9월 4일 (금)" */
+function projectPeriodLabel(p) {
+  if (p.dateMode === 'approx' && p.approxMonth) {
+    const [y, m] = p.approxMonth.split('-').map(Number);
+    const part = APPROX_PARTS.find((x) => x.id === p.approxPart) || APPROX_PARTS[3];
+    return `${y}년 ${m}월 ${part.label} (대략)`;
+  }
+  if (!p.startDate && !p.dueDate) return '기간 미정';
+  return `${p.startDate ? formatDate(p.startDate) : '—'} ~ ${p.dueDate ? formatDate(p.dueDate) : '—'}`;
+}
+
 /* ---------- 마감 임박 (불타는 이펙트) ---------- */
 
 /** 마감까지 이 일수 이하로 남으면 "불탄다". 지난 것도 포함. */
@@ -99,9 +144,9 @@ function isBurning(dueISO, isDone) {
   return n !== null && n <= BURN_DAYS;
 }
 
-/** 프로젝트는 자체 마감일 기준. 완료 표시했으면 타지 않는다. */
+/** 프로젝트는 기간의 끝 기준. 대략 일정이면 그 구간의 마지막 날이다. */
 function isProjectBurning(project) {
-  return isBurning(project.dueDate, project.done);
+  return isBurning(projectRange(project).end, project.done);
 }
 
 /** 겹친 불꽃 3겹. 흔들림은 CSS 가 준다. */
@@ -231,8 +276,11 @@ function migrate(data) {
     id: p.id || uid(),
     name: p.name || '',
     color: p.color || PROJECT_COLORS[0],
+    dateMode: p.dateMode === 'approx' ? 'approx' : 'exact',
     startDate: p.startDate || null,
     dueDate: p.dueDate || null,
+    approxMonth: p.approxMonth || null,          // 'YYYY-MM'
+    approxPart: p.approxPart || 'whole',
     done: !!p.done,
     notes: p.notes || '',
   }));
@@ -246,6 +294,8 @@ function migrate(data) {
     progress: typeof t.progress === 'number' ? t.progress : 0,
     startDate: t.startDate || null,
     dueDate: t.dueDate || null,
+    followProjectStart: !!t.followProjectStart,
+    followProjectDue: !!t.followProjectDue,
     estimateHours: typeof t.estimateHours === 'number' ? t.estimateHours : null,
     spentHours: typeof t.spentHours === 'number' ? t.spentHours : null,
     notes: t.notes || '',
@@ -262,6 +312,7 @@ window.Tracking = {
   uid, emptyData, migrate, loadLocal, saveLocal,
   todayISO, toISO, fromISO, addDays, daysUntil, ddayLabel, ddayTone, formatDate,
   BURN_DAYS, isBurning, isProjectBurning, FLAME_HTML,
+  APPROX_PARTS, projectRange, projectPeriodLabel,
   spanInWeek, packLanes,
   sortTasks, checklistProgress, effectiveProgress, projectOf,
 };

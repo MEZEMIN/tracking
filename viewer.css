@@ -110,6 +110,12 @@
   justify-content: flex-end; overflow: hidden;
 }
 .legend .swatch-task i { width: 7px; background: var(--accent); align-self: stretch; border-radius: 0 3px 3px 0; }
+.legend .swatch-approx {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--accent) 10%, transparent) 0,
+    var(--accent) 12px, var(--accent) calc(100% - 12px),
+    color-mix(in srgb, var(--accent) 10%, transparent) 100%);
+}
 
 .cal-dow {
   display: grid; grid-template-columns: repeat(7, 1fr);
@@ -238,6 +244,11 @@
 .pcard:hover { border-color: var(--border-strong); }
 .pcard.is-closed { opacity: .55; }
 .pperiod { font-size: 12px; color: var(--text-3); margin-bottom: 8px; font-family: var(--mono); }
+.pperiod.is-approx { font-family: var(--font); font-style: italic; }
+.tag-approx {
+  font-size: 10px; color: var(--text-2); background: var(--surface-2);
+  border-radius: 100px; padding: 1px 7px; margin-left: 4px;
+}
 .detail-kind { font-size: 11px; color: var(--text-3); display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .pbar { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
 .pbar > i { display: block; height: 100%; border-radius: 3px; }

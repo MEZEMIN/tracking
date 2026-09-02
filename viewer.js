@@ -220,13 +220,17 @@ function renderCalendar() {
 
   const projItems = data.projects
     .map((p, order) => ({ ...p, order }))
-    .filter((p) => (p.startDate || p.dueDate) && !(filterProject && p.id !== filterProject))
+    .filter((p) => !(filterProject && p.id !== filterProject))
     .filter((p) => !(hideDone && p.done))
-    .map((p) => ({
-      kind: 'project', id: p.id, color: p.color, label: p.name, order: p.order,
-      start: p.startDate, end: p.dueDate,
-      done: p.done, burning: T.isProjectBurning(p),
-    }));
+    .filter((p) => { const r = T.projectRange(p); return r.start || r.end; })
+    .map((p) => {
+      const r = T.projectRange(p);
+      return {
+        kind: 'project', id: p.id, color: p.color, label: p.name, order: p.order,
+        start: r.start, end: r.end, approx: r.approx,
+        done: p.done, burning: T.isProjectBurning(p),
+      };
+    });
 
   const taskItems = visibleTasks()
     .filter((t) => t.startDate || t.dueDate)
@@ -305,21 +309,34 @@ function barHTML(b) {
   const cls = [
     'cbar',
     b.kind === 'project' ? 'cbar-proj' : 'cbar-task',
+    b.approx ? 'is-approx' : '',
     b.done ? 'is-done' : '',
     b.openStart ? 'open-start' : '',
     b.openEnd ? 'open-end' : '',
     b.burning ? 'is-burning' : '',
   ].filter(Boolean).join(' ');
 
-  const style = `grid-column:${b.s + 1}/${b.e + 2};grid-row:${b.lane + 1};` +
-                `--c:${b.color || 'var(--border-strong)'}`;
+  const color = b.color || 'var(--border-strong)';
+  let style = `grid-column:${b.s + 1}/${b.e + 2};grid-row:${b.lane + 1};--c:${color};`;
+
+  // 아직 날짜가 안 정해진 일정은 양 끝을 흘려서 "이 언저리" 임을 보여준다.
+  // 다음 주로 이어지는 쪽은 잘린 것뿐이므로 흘리지 않는다.
+  if (b.approx) {
+    const soft = `color-mix(in srgb, ${color} 10%, transparent)`;
+    const fade = 'min(26px, 30%)';
+    const l = b.openStart ? color : soft;
+    const r = b.openEnd ? color : soft;
+    style += `background:linear-gradient(90deg,${l} 0,${color} ${fade},` +
+             `${color} calc(100% - ${fade}),${r} 100%);`;
+  }
 
   // 내 일정은 막대 끝(= 마감 지점)에만 프로젝트 색을 칠한다.
   const cap = b.kind === 'task' && !b.openEnd ? '<i class="cap"></i>' : '';
   const flame = b.burning ? T.FLAME_HTML : '';
+  const label = (b.approx ? '≈ ' : '') + b.label;
 
-  return `<button class="${cls}" style="${style}" data-id="${esc(b.id)}" data-kind="${b.kind}" title="${esc(b.label)}">
-    ${flame}<span class="lbl">${esc(b.label)}</span>${cap}
+  return `<button class="${cls}" style="${style}" data-id="${esc(b.id)}" data-kind="${b.kind}" title="${esc(label)}">
+    ${flame}<span class="lbl">${esc(label)}</span>${cap}
   </button>`;
 }
 
@@ -338,19 +355,16 @@ function renderProjects() {
     const next = T.sortTasks(open)[0];
     const overdue = open.filter((t) => T.daysUntil(t.dueDate) < 0).length;
     const burning = T.isProjectBurning(p);
-
-    const period = (p.startDate || p.dueDate)
-      ? `${p.startDate ? T.formatDate(p.startDate) : '—'} ~ ${p.dueDate ? T.formatDate(p.dueDate) : '—'}`
-      : '기간 미정';
+    const r = T.projectRange(p);
 
     return `<div class="pcard${burning ? ' is-burning' : ''}${p.done ? ' is-closed' : ''}" data-id="${esc(p.id)}" data-kind="project">
       <div class="pcard-head">
         <i class="dot" style="background:${esc(p.color)}"></i>
         <h3>${burning ? T.FLAME_HTML : ''}${esc(p.name)}</h3>
-        ${p.dueDate ? `<span class="dday${burning ? ' is-burning' : ''}" data-tone="${T.ddayTone(p.dueDate, p.done ? 'done' : 'doing')}">${T.ddayLabel(p.dueDate)}</span>` : ''}
+        ${r.end ? `<span class="dday${burning ? ' is-burning' : ''}" data-tone="${T.ddayTone(r.end, p.done ? 'done' : 'doing')}">${r.approx ? '≈' : ''}${T.ddayLabel(r.end)}</span>` : ''}
         <span class="count">${done}/${items.length} 완료</span>
       </div>
-      <div class="pperiod">${esc(period)}</div>
+      <div class="pperiod${r.approx ? ' is-approx' : ''}">${esc(T.projectPeriodLabel(p))}</div>
       <div class="pbar"><i style="width:${pct}%;background:${esc(p.color)}"></i></div>
       <div class="pcard-foot">
         ${next ? `<span>다음 일정: ${esc(next.title)} <span class="dday" data-tone="${T.ddayTone(next.dueDate, next.status)}">${T.ddayLabel(next.dueDate)}</span></span>` : '<span>예정된 일정 없음</span>'}
@@ -381,12 +395,11 @@ function openProjectDetail(id) {
   const pct = items.length ? Math.round((done / items.length) * 100) : 0;
   const burning = T.isProjectBurning(p);
 
+  const r = T.projectRange(p);
   const rows = [];
-  if (p.startDate || p.dueDate) {
-    rows.push(['기간', `${p.startDate ? esc(T.formatDate(p.startDate)) : '—'} ~ ${p.dueDate ? esc(T.formatDate(p.dueDate)) : '—'}`]);
-  }
-  if (p.dueDate) {
-    rows.push(['마감', `<span class="dday${burning ? ' is-burning' : ''}" data-tone="${T.ddayTone(p.dueDate, p.done ? 'done' : 'doing')}">${T.ddayLabel(p.dueDate)}</span>`]);
+  rows.push(['기간', esc(T.projectPeriodLabel(p)) + (r.approx ? ' <span class="tag-approx">미확정</span>' : '')]);
+  if (r.end) {
+    rows.push(['마감', `<span class="dday${burning ? ' is-burning' : ''}" data-tone="${T.ddayTone(r.end, p.done ? 'done' : 'doing')}">${r.approx ? '≈' : ''}${T.ddayLabel(r.end)}</span>`]);
   }
   rows.push(['진행', `<span class="pctrow"><span class="bar" style="width:120px"><i style="width:${pct}%;background:${esc(p.color)}"></i></span> ${done}/${items.length}</span>`]);
   if (p.notes) rows.push(['메모', `<div class="notes">${esc(p.notes)}</div>`]);

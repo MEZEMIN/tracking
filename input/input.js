@@ -37,6 +37,32 @@ function toast(msg) {
 
 function isSel(kind, id) { return sel && sel.kind === kind && sel.id === id; }
 
+function thisMonth() { return monthFromNow(0); }
+
+/** 이번 달 기준 n 개월 뒤를 'YYYY-MM' 으로. */
+function monthFromNow(n) {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * "프로젝트에 맞춤" 이 켜진 일정의 날짜를 프로젝트 기간에 다시 맞춘다.
+ * 프로젝트 날짜가 바뀌거나, 일정의 소속 프로젝트가 바뀔 때 부른다.
+ */
+function syncTaskDates(t) {
+  const p = T.projectOf(data, t);
+  if (!p) { t.followProjectStart = false; t.followProjectDue = false; return; }
+  const r = T.projectRange(p);
+  if (t.followProjectStart) t.startDate = r.start;
+  if (t.followProjectDue) t.dueDate = r.end;
+}
+
+function syncLinkedTasks(projectId) {
+  data.tasks.forEach((t) => { if (t.projectId === projectId) syncTaskDates(t); });
+}
+
 /* ---------- 프로젝트 목록 ---------- */
 
 function renderProjects() {
@@ -116,6 +142,8 @@ $('#btn-add-task').addEventListener('click', () => {
     progress: 0,
     startDate: null,
     dueDate: null,
+    followProjectStart: false,
+    followProjectDue: false,
     estimateHours: null,
     spentHours: null,
     notes: '',
@@ -147,6 +175,13 @@ function renderEditor() {
   else renderTaskEditor();
 }
 
+/** 대략 일정이 실제로 어느 날짜 범위가 되는지 덧붙인다. */
+function rangeHint(p) {
+  const r = T.projectRange(p);
+  if (!r.start || !r.end) return ' — 달을 고르면 범위가 잡힙니다.';
+  return ` — 캘린더에는 ${T.formatDate(r.start)} ~ ${T.formatDate(r.end)} 로 흐리게 표시됩니다.`;
+}
+
 /* 프로젝트 일정 편집 */
 function renderProjectEditor() {
   const p = data.projects.find((x) => x.id === sel.id);
@@ -170,6 +205,35 @@ function renderProjectEditor() {
       </div>
     </div>
 
+    <div class="field">
+      <label>일정</label>
+      <div class="seg" data-f="dateMode">
+        <button data-v="exact" class="${p.dateMode !== 'approx' ? 'is-on' : ''}">정확한 날짜</button>
+        <button data-v="approx" class="${p.dateMode === 'approx' ? 'is-on' : ''}">아직 미정 (대략)</button>
+      </div>
+    </div>
+
+    ${p.dateMode === 'approx' ? `
+    <div class="field-row">
+      <div class="field">
+        <label>어느 달</label>
+        <input type="month" data-f="approxMonth" value="${esc(p.approxMonth || '')}">
+        <div class="quick">
+          <button data-month="0">이번 달</button>
+          <button data-month="1">다음 달</button>
+          <button data-month="2">다다음 달</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>그 달의 언제쯤</label>
+        <div class="seg seg-wrap" data-f="approxPart">
+          ${T.APPROX_PARTS.map((x) =>
+            `<button data-v="${x.id}" class="${x.id === (p.approxPart || 'whole') ? 'is-on' : ''}">${x.label}</button>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="approx-preview">${esc(T.projectPeriodLabel(p))}${rangeHint(p)}</div>
+    ` : `
     <div class="field-row">
       <div class="field">
         <label>시작일</label>
@@ -180,6 +244,7 @@ function renderProjectEditor() {
         <input type="date" data-f="dueDate" value="${esc(p.dueDate || '')}">
       </div>
     </div>
+    `}
 
     <div class="field">
       <label class="check"><input type="checkbox" data-f="done"${p.done ? ' checked' : ''}> 프로젝트 완료 (불꽃 이펙트가 꺼집니다)</label>
@@ -200,16 +265,52 @@ function renderProjectEditor() {
       <button class="danger" id="btn-delete">삭제</button>
     </div>`;
 
-  bindFields($('#editor'), p, {
+  const box = $('#editor');
+
+  bindFields(box, p, {
     dates: ['startDate', 'dueDate'],
+    nullable: ['approxMonth'],
     onChange: (f) => {
-      if (f === 'name' || f === 'color' || f === 'dueDate' || f === 'done') { renderProjects(); renderTasks(); }
-      // 색·완료·마감일은 헤더의 "마감 임박" 표시에도 영향을 준다
-      if (f === 'color' || f === 'done' || f === 'dueDate') renderProjectEditor();
+      // bindFields 는 이미 저장한 뒤에 부르므로, 연동 일정을 고친 뒤 한 번 더 저장한다.
+      if (f === 'startDate' || f === 'dueDate' || f === 'approxMonth') {
+        syncLinkedTasks(p.id);
+        commit();
+      }
+      renderProjects(); renderTasks();
+      // 날짜·색·완료는 헤더의 "마감 임박" 표시와 미리보기에도 영향을 준다
+      if (f !== 'name' && f !== 'notes') renderProjectEditor();
     },
   });
 
-  $('#editor .swatches').addEventListener('click', (e) => {
+  // 일정 방식(정확/대략)과 구간(초·중순·말·전체) 전환
+  box.querySelectorAll('.seg[data-f]').forEach((seg) => {
+    const f = seg.dataset.f;
+    seg.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-v]');
+      if (!b) return;
+      p[f] = b.dataset.v;
+      // 대략으로 처음 바꾸면 이번 달을 기본값으로 넣어준다.
+      if (f === 'dateMode' && p.dateMode === 'approx' && !p.approxMonth) p.approxMonth = thisMonth();
+      syncLinkedTasks(p.id);
+      commit();
+      renderAll();
+    });
+  });
+
+  // 이번 달 / 다음 달 빠른 선택
+  const quick = box.querySelector('.quick');
+  if (quick) {
+    quick.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-month]');
+      if (!b) return;
+      p.approxMonth = monthFromNow(Number(b.dataset.month));
+      syncLinkedTasks(p.id);
+      commit();
+      renderAll();
+    });
+  }
+
+  box.querySelector('.swatches').addEventListener('click', (e) => {
     const b = e.target.closest('[data-c]');
     if (!b) return;
     p.color = b.dataset.c;
@@ -236,10 +337,12 @@ function renderTaskEditor() {
   const t = data.tasks.find((x) => x.id === sel.id);
   if (!t) { sel = null; return renderEditor(); }
   const p = T.projectOf(data, t);
+  const pr = p ? T.projectRange(p) : null;      // 맞출 기준이 되는 프로젝트 기간
   const pct = T.effectiveProgress(t);
 
   $('#editor').innerHTML = `
-    <div class="editor-kind"><i class="dot" style="background:${esc(p ? p.color : 'var(--border-strong)')}"></i> 내 일정</div>
+    <div class="editor-kind"><i class="dot" style="background:${esc(p ? p.color : 'var(--border-strong)')}"></i> 내 일정${
+      pr && pr.approx ? ' <span class="tag-approx">프로젝트 일정 미확정</span>' : ''}</div>
 
     <div class="field">
       <input class="title-input" type="text" data-f="title" value="${esc(t.title)}" placeholder="일정 제목">
@@ -282,11 +385,19 @@ function renderTaskEditor() {
     <div class="field-row">
       <div class="field">
         <label>시작일 (비우면 마감일 하루짜리)</label>
-        <input type="date" data-f="startDate" value="${esc(t.startDate || '')}">
+        <input type="date" data-f="startDate" value="${esc(t.startDate || '')}"${t.followProjectStart ? ' disabled' : ''}>
+        ${pr && pr.start ? `<label class="check follow">
+          <input type="checkbox" data-follow="start"${t.followProjectStart ? ' checked' : ''}>
+          프로젝트 시작일에 맞춤 <span class="d">${esc(T.formatDate(pr.start))}</span>
+        </label>` : ''}
       </div>
       <div class="field">
         <label>마감일 (D-Day 기준)</label>
-        <input type="date" data-f="dueDate" value="${esc(t.dueDate || '')}">
+        <input type="date" data-f="dueDate" value="${esc(t.dueDate || '')}"${t.followProjectDue ? ' disabled' : ''}>
+        ${pr && pr.end ? `<label class="check follow">
+          <input type="checkbox" data-follow="due"${t.followProjectDue ? ' checked' : ''}>
+          프로젝트 마감일에 맞춤 <span class="d">${esc(T.formatDate(pr.end))}</span>
+        </label>` : ''}
       </div>
     </div>
 
@@ -329,8 +440,23 @@ function renderTaskEditor() {
     numbers: ['estimateHours', 'spentHours'],
     nullable: ['projectId'],
     onChange: (f) => {
-      if (f === 'title' || f === 'dueDate' || f === 'projectId') renderTasks();
+      // 소속 프로젝트가 바뀌면 맞춰둔 날짜도 새 프로젝트 기준으로 다시 잡는다.
+      if (f === 'projectId') { syncTaskDates(t); commit(); renderEditor(); }
+      if (f === 'title' || f === 'dueDate' || f === 'startDate' || f === 'projectId') renderTasks();
     },
+  });
+
+  // "프로젝트에 맞춤" — 시작일과 마감일을 따로 켜고 끌 수 있다.
+  box.querySelectorAll('[data-follow]').forEach((el) => {
+    el.addEventListener('change', (e) => {
+      const which = el.dataset.follow;
+      if (which === 'start') t.followProjectStart = e.target.checked;
+      else t.followProjectDue = e.target.checked;
+      syncTaskDates(t);
+      t.updatedAt = new Date().toISOString();
+      commit();
+      renderEditor(); renderTasks();
+    });
   });
 
   // 진척률 슬라이더
