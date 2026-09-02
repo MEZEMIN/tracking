@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publishedAt": "2026-09-02T23:40:55.742Z",
+  "publishedAt": "2026-09-02T23:58:12.140Z",
   "owner": "",
   "sample": false,
   "projects": [
@@ -48,7 +48,7 @@
       "projectId": "omnfhy8x9b20",
       "priority": "high",
       "status": "doing",
-      "progress": 15,
+      "progress": 30,
       "startDate": "2026-09-02",
       "dueDate": "2026-09-10",
       "followProjectStart": true,
@@ -60,7 +60,7 @@
       "notes": "",
       "checklist": [],
       "createdAt": "2026-09-02T20:58:16.796Z",
-      "updatedAt": "2026-09-02T23:40:53.448Z"
+      "updatedAt": "2026-09-02T23:58:10.992Z"
     },
     {
       "id": "3ycv5y0yxle6",
