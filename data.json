@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publishedAt": "2026-09-02T21:06:17.193Z",
+  "publishedAt": "2026-09-02T21:09:58.477Z",
   "owner": "",
   "sample": false,
   "projects": [
@@ -20,27 +20,25 @@
       "id": "apvgi15z2sd4",
       "name": "Korea Pro 메뉴얼 및 제품 외관 디자인 완성",
       "color": "#e08a2e",
+      "dateMode": "approx",
       "startDate": null,
       "dueDate": null,
-      "done": false,
-      "notes": "",
-      "dateMode": "approx",
       "approxMonth": "2026-09",
       "approxPart": "late",
-      "updatedAt": "2026-09-02T21:04:28.390Z"
+      "done": false,
+      "notes": ""
     },
     {
       "id": "7jfczpkl3d8v",
       "name": "보스턴 지점 디자인 완성",
       "color": "#3f74c4",
+      "dateMode": "approx",
       "startDate": null,
       "dueDate": null,
-      "done": false,
-      "notes": "",
-      "updatedAt": "2026-09-02T21:04:23.534Z",
-      "dateMode": "approx",
       "approxMonth": "2026-09",
-      "approxPart": "mid"
+      "approxPart": "early",
+      "done": false,
+      "notes": ""
     }
   ],
   "tasks": [
