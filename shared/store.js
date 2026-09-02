@@ -26,6 +26,14 @@ const APPROX_PARTS = [
   { id: 'whole', label: '전체', from: 1,  to: 0 },
 ];
 
+const REPEAT_FREQS = [
+  { id: 'daily',   label: '매일', unit: '일' },
+  { id: 'weekly',  label: '매주', unit: '주' },
+  { id: 'monthly', label: '매월', unit: '개월' },
+];
+
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
 const PROJECT_COLORS = [
   '#e0533d', '#e08a2e', '#c9a227', '#4f9d4f',
   '#3d8f8f', '#3f74c4', '#7a5cc4', '#c04f92',
@@ -97,6 +105,124 @@ function formatDate(iso) {
   const d = fromISO(iso);
   const week = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${week})`;
+}
+
+/* ---------- 반복 일정 ---------- */
+
+/*
+ * 반복은 복사본을 만들지 않는다. 규칙 하나만 저장하고, 화면에 그릴 때
+ * 그 날짜가 규칙에 맞는지 물어보는 식으로 펼친다. 회차별 완료는 doneDates 에
+ * 날짜만 쌓는다.
+ *
+ * 기준일(anchor)은 마감일이다. 반복은 기준일부터 시작한다.
+ */
+
+function hasRepeat(t) {
+  return !!(t && t.repeat && t.repeat.freq);
+}
+
+function repeatAnchor(t) {
+  return t.dueDate || t.startDate || null;
+}
+
+function startOfWeek(iso) {
+  const d = fromISO(iso);
+  return addDays(iso, -d.getDay());
+}
+
+/** 이 날짜가 반복 규칙에 걸리는가. */
+function matchesRepeat(t, iso) {
+  if (!hasRepeat(t)) return false;
+  const anchor = repeatAnchor(t);
+  if (!anchor || iso < anchor) return false;
+
+  const r = t.repeat;
+  if (r.until && iso > r.until) return false;
+  const step = Math.max(1, r.interval || 1);
+
+  if (r.freq === 'daily') {
+    return daysUntil(iso, anchor) % step === 0;
+  }
+
+  if (r.freq === 'weekly') {
+    const days = r.weekdays && r.weekdays.length ? r.weekdays : [fromISO(anchor).getDay()];
+    if (!days.includes(fromISO(iso).getDay())) return false;
+    // 기준일이 속한 주부터 step 주 간격
+    const weeks = Math.round(daysUntil(startOfWeek(iso), startOfWeek(anchor)) / 7);
+    return weeks >= 0 && weeks % step === 0;
+  }
+
+  if (r.freq === 'monthly') {
+    const d = fromISO(iso);
+    const a = fromISO(anchor);
+    const wanted = r.monthDay || a.getDate();
+    // 31일로 잡았는데 그 달에 없으면 말일에 붙인다
+    const target = Math.min(wanted, lastDayOf(d.getFullYear(), d.getMonth() + 1));
+    if (d.getDate() !== target) return false;
+    const months = (d.getFullYear() - a.getFullYear()) * 12 + (d.getMonth() - a.getMonth());
+    return months >= 0 && months % step === 0;
+  }
+
+  return false;
+}
+
+/** 구간 안에서 실제로 걸리는 날짜들. 캘린더는 6주치만 물어보므로 가볍다. */
+function occurrencesBetween(t, fromDate, toDate, cap = 200) {
+  const out = [];
+  let d = fromDate;
+  while (d <= toDate && out.length < cap) {
+    if (matchesRepeat(t, d)) out.push(d);
+    d = addDays(d, 1);
+  }
+  return out;
+}
+
+function isOccurrenceDone(t, iso) {
+  return (t.doneDates || []).includes(iso);
+}
+
+/**
+ * 지금 신경 써야 할 회차.
+ * 최근 2주 안에 안 끝낸 회차가 있으면 그게 먼저(= 밀린 것), 없으면 다음 회차.
+ */
+function repeatFocusDate(t, fromIso) {
+  if (!hasRepeat(t)) return null;
+  let d = addDays(fromIso || todayISO(), -14);
+  for (let i = 0; i < 800; i++) {
+    if (matchesRepeat(t, d) && !isOccurrenceDone(t, d)) return d;
+    d = addDays(d, 1);
+  }
+  return null;
+}
+
+/** D-Day·정렬·통계가 볼 마감일. 반복이면 지금 신경 써야 할 회차다. */
+function taskDue(t) {
+  return hasRepeat(t) ? repeatFocusDate(t) : t.dueDate;
+}
+
+/** "매주 월·수" / "2주마다 금" / "매월 15일" */
+function repeatLabel(t) {
+  if (!hasRepeat(t)) return '';
+  const r = t.repeat;
+  const f = REPEAT_FREQS.find((x) => x.id === r.freq);
+  if (!f) return '';
+  const step = Math.max(1, r.interval || 1);
+  const every = step === 1 ? f.label : `${step}${f.unit}마다`;
+
+  if (r.freq === 'weekly') {
+    const anchor = repeatAnchor(t);
+    const days = r.weekdays && r.weekdays.length
+      ? r.weekdays
+      : (anchor ? [fromISO(anchor).getDay()] : []);
+    const names = days.slice().sort((a, b) => a - b).map((i) => WEEKDAYS[i]).join('·');
+    return names ? `${every} ${names}` : every;
+  }
+  if (r.freq === 'monthly') {
+    const anchor = repeatAnchor(t);
+    const day = r.monthDay || (anchor ? fromISO(anchor).getDate() : null);
+    return day ? `${every} ${day}일` : every;
+  }
+  return every;
 }
 
 /* ---------- 프로젝트 기간 ---------- */
@@ -218,8 +344,8 @@ function sortTasks(tasks) {
   return [...tasks].sort((a, b) => {
     const adone = a.status === 'done', bdone = b.status === 'done';
     if (adone !== bdone) return adone ? 1 : -1;
-    const ad = daysUntil(a.dueDate, today);
-    const bd = daysUntil(b.dueDate, today);
+    const ad = daysUntil(taskDue(a), today);
+    const bd = daysUntil(taskDue(b), today);
     if (ad === null && bd !== null) return 1;
     if (bd === null && ad !== null) return -1;
     if (ad !== null && bd !== null && ad !== bd) return ad - bd;
@@ -296,6 +422,14 @@ function migrate(data) {
     dueDate: t.dueDate || null,
     followProjectStart: !!t.followProjectStart,
     followProjectDue: !!t.followProjectDue,
+    repeat: t.repeat && t.repeat.freq ? {
+      freq: t.repeat.freq,
+      interval: Math.max(1, Number(t.repeat.interval) || 1),
+      weekdays: Array.isArray(t.repeat.weekdays) ? t.repeat.weekdays : [],
+      monthDay: t.repeat.monthDay || null,
+      until: t.repeat.until || null,
+    } : null,
+    doneDates: Array.isArray(t.doneDates) ? t.doneDates : [],
     estimateHours: typeof t.estimateHours === 'number' ? t.estimateHours : null,
     spentHours: typeof t.spentHours === 'number' ? t.spentHours : null,
     notes: t.notes || '',
@@ -313,6 +447,8 @@ window.Tracking = {
   todayISO, toISO, fromISO, addDays, daysUntil, ddayLabel, ddayTone, formatDate,
   BURN_DAYS, isBurning, isProjectBurning, FLAME_HTML,
   APPROX_PARTS, projectRange, projectPeriodLabel,
+  REPEAT_FREQS, WEEKDAYS, hasRepeat, matchesRepeat, occurrencesBetween,
+  isOccurrenceDone, repeatFocusDate, taskDue, repeatLabel,
   spanInWeek, packLanes,
   sortTasks, checklistProgress, effectiveProgress, projectOf,
 };

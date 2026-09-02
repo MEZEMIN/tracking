@@ -117,9 +117,9 @@ function render() {
 
 function renderStats() {
   const open = data.tasks.filter((t) => t.status !== 'done');
-  const overdue = open.filter((t) => t.dueDate && T.daysUntil(t.dueDate) < 0);
+  const overdue = open.filter((t) => T.daysUntil(T.taskDue(t)) < 0);
   const week = open.filter((t) => {
-    const n = T.daysUntil(t.dueDate);
+    const n = T.daysUntil(T.taskDue(t));
     return n !== null && n >= 0 && n <= 7;
   });
   const done = data.tasks.filter((t) => t.status === 'done');
@@ -167,15 +167,32 @@ function renderCalendar() {
       };
     });
 
-  const taskItems = visibleTasks()
-    .filter((t) => t.startDate || t.dueDate)
-    .map((t) => {
-      const pr = T.projectOf(data, t);
-      return {
-        kind: 'task', id: t.id, color: pr ? pr.color : null, label: t.title,
-        start: t.startDate, end: t.dueDate, done: t.status === 'done',
-      };
+  // 반복 업무는 규칙을 이 격자 범위 안에서 회차로 펼친다.
+  const gridFrom = T.toISO(gridStart);
+  const gridTo = T.addDays(gridFrom, 41);
+  const taskItems = [];
+  for (const t of visibleTasks()) {
+    const pr = T.projectOf(data, t);
+    const color = pr ? pr.color : null;
+
+    if (T.hasRepeat(t)) {
+      for (const iso of T.occurrencesBetween(t, gridFrom, gridTo)) {
+        const done = t.status === 'done' || T.isOccurrenceDone(t, iso);
+        if (done && hideDone) continue;      // "완료 숨기기" 는 회차 단위로도 적용된다
+        taskItems.push({
+          kind: 'task', id: t.id, color, label: t.title,
+          start: iso, end: iso, repeat: true, done,
+        });
+      }
+      continue;
+    }
+
+    if (!t.startDate && !t.dueDate) continue;
+    taskItems.push({
+      kind: 'task', id: t.id, color, label: t.title,
+      start: t.startDate, end: t.dueDate, done: t.status === 'done',
     });
+  }
 
   // 프로젝트 줄은 달 전체에서 레인을 한 번만 배정한다 — 주가 바뀌어도 같은 줄에 머문다.
   const gridStartISO = T.toISO(gridStart);
@@ -245,6 +262,7 @@ function barHTML(b) {
     'cbar',
     b.kind === 'project' ? 'cbar-proj' : 'cbar-task',
     b.approx ? 'is-approx' : '',
+    b.repeat ? 'is-repeat' : '',
     b.done ? 'is-done' : '',
     b.openStart ? 'open-start' : '',
     b.openEnd ? 'open-end' : '',
@@ -268,7 +286,7 @@ function barHTML(b) {
   // 내 일정은 막대 끝(= 마감 지점)에만 프로젝트 색을 칠한다.
   const cap = b.kind === 'task' && !b.openEnd ? '<i class="cap"></i>' : '';
   const flame = b.burning ? T.FLAME_HTML : '';
-  const label = (b.approx ? '≈ ' : '') + b.label;
+  const label = (b.approx ? '≈ ' : '') + (b.repeat ? '↻ ' : '') + b.label;
 
   return `<button class="${cls}" style="${style}" data-id="${esc(b.id)}" data-kind="${b.kind}" title="${esc(label)}">
     ${flame}<span class="lbl">${esc(label)}</span>${cap}
@@ -286,9 +304,9 @@ function renderProjects() {
     const items = data.tasks.filter((t) => t.projectId === p.id);
     const done = items.filter((t) => t.status === 'done').length;
     const pct = items.length ? Math.round((done / items.length) * 100) : 0;
-    const open = items.filter((t) => t.status !== 'done' && t.dueDate);
+    const open = items.filter((t) => t.status !== 'done' && T.taskDue(t));
     const next = T.sortTasks(open)[0];
-    const overdue = open.filter((t) => T.daysUntil(t.dueDate) < 0).length;
+    const overdue = open.filter((t) => T.daysUntil(T.taskDue(t)) < 0).length;
     const burning = T.isProjectBurning(p);
     const r = T.projectRange(p);
 
@@ -302,7 +320,7 @@ function renderProjects() {
       <div class="pperiod${r.approx ? ' is-approx' : ''}">${esc(T.projectPeriodLabel(p))}</div>
       <div class="pbar"><i style="width:${pct}%;background:${esc(p.color)}"></i></div>
       <div class="pcard-foot">
-        ${next ? `<span>다음 일정: ${esc(next.title)} <span class="dday" data-tone="${T.ddayTone(next.dueDate, next.status)}">${T.ddayLabel(next.dueDate)}</span></span>` : '<span>예정된 일정 없음</span>'}
+        ${next ? `<span>다음 일정: ${T.hasRepeat(next) ? '↻ ' : ''}${esc(next.title)} <span class="dday" data-tone="${T.ddayTone(T.taskDue(next), next.status)}">${T.ddayLabel(T.taskDue(next))}</span></span>` : '<span>예정된 일정 없음</span>'}
         ${overdue ? `<span style="color:var(--overdue)">지연 ${overdue}건</span>` : ''}
       </div>
     </div>`;
@@ -340,8 +358,8 @@ function openProjectDetail(id) {
   if (p.notes) rows.push(['메모', `<div class="notes">${esc(p.notes)}</div>`]);
   if (items.length) {
     rows.push(['업무', `<ul class="cl">${items.map((t) =>
-      `<li class="${t.status === 'done' ? 'done' : ''}">${t.status === 'done' ? '☑' : '☐'} ${esc(t.title)}` +
-      `${t.dueDate ? ` <span class="dday" data-tone="${T.ddayTone(t.dueDate, t.status)}">${T.ddayLabel(t.dueDate)}</span>` : ''}</li>`).join('')}</ul>`]);
+      `<li class="${t.status === 'done' ? 'done' : ''}">${t.status === 'done' ? '☑' : '☐'} ${T.hasRepeat(t) ? '↻ ' : ''}${esc(t.title)}` +
+      `${T.taskDue(t) ? ` <span class="dday" data-tone="${T.ddayTone(T.taskDue(t), t.status)}">${T.ddayLabel(T.taskDue(t))}</span>` : ''}</li>`).join('')}</ul>`]);
   }
 
   $('#detail').innerHTML =
@@ -363,11 +381,27 @@ function openDetail(id) {
 
   const rows = [];
   if (p) rows.push(['프로젝트', `<i class="dot" style="background:${esc(p.color)}"></i> ${esc(p.name)}`]);
+  if (T.hasRepeat(t)) {
+    rows.push(['반복', `${esc(T.repeatLabel(t))}${t.repeat.until ? ` · ${esc(T.formatDate(t.repeat.until))} 까지` : ''}`]);
+    const today = T.todayISO();
+    const list = T.occurrencesBetween(t, T.addDays(today, -14), T.addDays(today, 28), 12);
+    if (list.length) {
+      rows.push(['회차', `<ul class="cl">${list.map((iso) => {
+        const done = T.isOccurrenceDone(t, iso);
+        return `<li class="${done ? 'done' : ''}">${done ? '☑' : '☐'} ${esc(T.formatDate(iso))}` +
+          `${iso === today ? ' <span class="tag-approx">오늘</span>' : ''}</li>`;
+      }).join('')}</ul>`]);
+    }
+  }
   rows.push(['상태', esc(status ? status.label : t.status)]);
   rows.push(['우선순위', esc(pri ? pri.label : t.priority)]);
   rows.push(['진척률', `<span class="pctrow"><span class="bar" style="width:120px"><i style="width:${pct}%"></i></span> ${pct}%</span>`]);
   if (t.startDate) rows.push(['시작일', esc(T.formatDate(t.startDate))]);
-  if (t.dueDate) rows.push(['마감일', `${esc(T.formatDate(t.dueDate))} <span class="dday" data-tone="${T.ddayTone(t.dueDate, t.status)}">${T.ddayLabel(t.dueDate)}</span>`]);
+  const due = T.taskDue(t);
+  if (due) {
+    rows.push([T.hasRepeat(t) ? '다음 회차' : '마감일',
+      `${esc(T.formatDate(due))} <span class="dday" data-tone="${T.ddayTone(due, t.status)}">${T.ddayLabel(due)}</span>`]);
+  }
   if (t.estimateHours || t.spentHours) {
     const hrs = (v) => (v || v === 0 ? `${v}h` : '-');
     rows.push(['소요 시간', `예상 ${hrs(t.estimateHours)} · 실제 ${hrs(t.spentHours)}`]);

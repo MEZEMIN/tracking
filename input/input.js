@@ -115,10 +115,11 @@ function renderTasks() {
   }
   box.innerHTML = list.map((t) => {
     const p = T.projectOf(data, t);
+    const due = T.taskDue(t);
     return `<button class="trow${isSel('task', t.id) ? ' is-on' : ''}${t.status === 'done' ? ' is-done' : ''}" data-id="${esc(t.id)}">
       <i class="dot" style="background:${esc(p ? p.color : 'var(--border-strong)')}"></i>
-      <span class="t">${esc(t.title || '(제목 없음)')}</span>
-      <span class="dday" data-tone="${T.ddayTone(t.dueDate, t.status)}">${T.ddayLabel(t.dueDate)}</span>
+      <span class="t">${T.hasRepeat(t) ? '<b class="rep">↻</b>' : ''}${esc(t.title || '(제목 없음)')}</span>
+      <span class="dday" data-tone="${T.ddayTone(due, t.status)}">${T.ddayLabel(due)}</span>
     </button>`;
   }).join('');
   box.querySelectorAll('.trow').forEach((b) => {
@@ -144,6 +145,8 @@ $('#btn-add-task').addEventListener('click', () => {
     dueDate: null,
     followProjectStart: false,
     followProjectDue: false,
+    repeat: null,
+    doneDates: [],
     estimateHours: null,
     spentHours: null,
     notes: '',
@@ -333,6 +336,8 @@ function renderProjectEditor() {
 }
 
 /* 내 일정 편집 */
+function touch(o) { o.updatedAt = new Date().toISOString(); }
+
 function renderTaskEditor() {
   const t = data.tasks.find((x) => x.id === sel.id);
   if (!t) { sel = null; return renderEditor(); }
@@ -413,6 +418,18 @@ function renderTaskEditor() {
     </div>
 
     <div class="field">
+      <label>반복</label>
+      <div class="seg" data-f="repeatFreq">
+        <button data-v="" class="${!T.hasRepeat(t) ? 'is-on' : ''}">안 함</button>
+        ${T.REPEAT_FREQS.map((f) =>
+          `<button data-v="${f.id}" class="${t.repeat && t.repeat.freq === f.id ? 'is-on' : ''}">${f.label}</button>`).join('')}
+      </div>
+      ${T.hasRepeat(t) ? repeatDetailHTML(t) : ''}
+    </div>
+
+    ${T.hasRepeat(t) ? occurrenceListHTML(t) : ''}
+
+    <div class="field">
       <label>체크리스트</label>
       <div id="cl-list">${(t.checklist || []).map((it, i) => `
         <div class="cl-item" data-i="${i}">
@@ -444,6 +461,66 @@ function renderTaskEditor() {
       if (f === 'projectId') { syncTaskDates(t); commit(); renderEditor(); }
       if (f === 'title' || f === 'dueDate' || f === 'startDate' || f === 'projectId') renderTasks();
     },
+  });
+
+  // 반복 주기 전환 (안 함 / 매일 / 매주 / 매월)
+  const freqSeg = box.querySelector('.seg[data-f=repeatFreq]');
+  freqSeg.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-v]');
+    if (!b) return;
+    const v = b.dataset.v;
+    t.repeat = v ? {
+      freq: v,
+      interval: t.repeat ? t.repeat.interval || 1 : 1,
+      weekdays: v === 'weekly' && t.dueDate ? [T.fromISO(t.dueDate).getDay()] : [],
+      monthDay: v === 'monthly' && t.dueDate ? T.fromISO(t.dueDate).getDate() : null,
+      until: t.repeat ? t.repeat.until : null,
+    } : null;
+    if (!t.repeat) t.doneDates = [];      // 반복을 끄면 회차 기록도 의미가 없다
+    touch(t); commit();
+    renderEditor(); renderTasks();
+  });
+
+  // 반복 세부 설정
+  box.querySelectorAll('[data-r]').forEach((el) => {
+    const f = el.dataset.r;
+    el.addEventListener(el.type === 'date' ? 'change' : 'input', (e) => {
+      const v = e.target.value;
+      if (f === 'until') t.repeat.until = v || null;
+      else t.repeat[f] = v === '' ? null : Math.max(1, Number(v));
+      touch(t); commit();
+      renderEditor(); renderTasks();
+    });
+  });
+
+  // 매주 반복의 요일 선택
+  const wdays = box.querySelector('.wdays');
+  if (wdays) {
+    wdays.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-wd]');
+      if (!b) return;
+      const i = Number(b.dataset.wd);
+      const cur = new Set(t.repeat.weekdays && t.repeat.weekdays.length
+        ? t.repeat.weekdays
+        : (t.dueDate ? [T.fromISO(t.dueDate).getDay()] : []));
+      if (cur.has(i)) cur.delete(i); else cur.add(i);
+      if (cur.size === 0) return;          // 최소 하나는 남긴다
+      t.repeat.weekdays = [...cur].sort((a, b2) => a - b2);
+      touch(t); commit();
+      renderEditor(); renderTasks();
+    });
+  }
+
+  // 회차별 완료 표시
+  box.querySelectorAll('[data-occ]').forEach((el) => {
+    el.addEventListener('change', (e) => {
+      const iso = el.dataset.occ;
+      const set = new Set(t.doneDates || []);
+      if (e.target.checked) set.add(iso); else set.delete(iso);
+      t.doneDates = [...set].sort();
+      touch(t); commit();
+      renderTasks();
+    });
   });
 
   // "프로젝트에 맞춤" — 시작일과 마감일을 따로 켜고 끌 수 있다.
@@ -506,6 +583,7 @@ function renderTaskEditor() {
     copy.id = T.uid();
     copy.title = `${t.title} (복사본)`;
     copy.checklist = (copy.checklist || []).map((i) => ({ ...i, id: T.uid() }));
+    copy.doneDates = [];          // 회차 완료 기록은 복제하지 않는다
     copy.createdAt = copy.updatedAt = new Date().toISOString();
     data.tasks.push(copy);
     sel = { kind: 'task', id: copy.id };
@@ -520,6 +598,69 @@ function renderTaskEditor() {
     commit('삭제했습니다.');
     renderAll();
   });
+}
+
+/** 반복 세부 설정: 간격 / (매주) 요일 / 종료일 */
+function repeatDetailHTML(t) {
+  const r = t.repeat;
+  const f = T.REPEAT_FREQS.find((x) => x.id === r.freq);
+  const anchorDay = t.dueDate ? T.fromISO(t.dueDate).getDay() : 0;
+  const picked = r.weekdays && r.weekdays.length ? r.weekdays : [anchorDay];
+
+  return `
+    <div class="repeat-box">
+      <div class="repeat-row">
+        <span class="rl">간격</span>
+        <input type="number" min="1" max="30" data-r="interval" value="${r.interval || 1}">
+        <span class="rl">${f ? f.unit : ''}마다</span>
+      </div>
+
+      ${r.freq === 'weekly' ? `
+      <div class="repeat-row">
+        <span class="rl">요일</span>
+        <div class="wdays">
+          ${T.WEEKDAYS.map((w, i) =>
+            `<button data-wd="${i}" class="${picked.includes(i) ? 'is-on' : ''}">${w}</button>`).join('')}
+        </div>
+      </div>` : ''}
+
+      ${r.freq === 'monthly' ? `
+      <div class="repeat-row">
+        <span class="rl">며칠</span>
+        <input type="number" min="1" max="31" data-r="monthDay"
+               value="${r.monthDay || (t.dueDate ? T.fromISO(t.dueDate).getDate() : 1)}">
+        <span class="rl">일 (없는 달은 말일)</span>
+      </div>` : ''}
+
+      <div class="repeat-row">
+        <span class="rl">종료</span>
+        <input type="date" data-r="until" value="${esc(r.until || '')}">
+        <span class="rl">비우면 계속</span>
+      </div>
+
+      <div class="repeat-summary">${esc(T.repeatLabel(t))} — 마감일(${esc(t.dueDate || '미정')})부터 시작합니다.</div>
+    </div>`;
+}
+
+/** 최근·다가오는 회차를 체크박스로 보여준다. 회차별로 따로 완료 표시한다. */
+function occurrenceListHTML(t) {
+  const today = T.todayISO();
+  const list = T.occurrencesBetween(t, T.addDays(today, -14), T.addDays(today, 35), 12);
+  if (!list.length) {
+    return '<div class="field"><label>회차</label><div class="hint">마감일을 정하면 회차가 잡힙니다.</div></div>';
+  }
+  return `<div class="field">
+    <label>회차별 완료</label>
+    <div class="occ-list">${list.map((iso) => {
+      const done = T.isOccurrenceDone(t, iso);
+      const past = iso < today;
+      return `<label class="occ${iso === today ? ' is-today' : ''}${past && !done ? ' is-late' : ''}">
+        <input type="checkbox" data-occ="${iso}"${done ? ' checked' : ''}>
+        <span>${esc(T.formatDate(iso))}</span>
+        ${iso === today ? '<b>오늘</b>' : ''}
+      </label>`;
+    }).join('')}</div>
+  </div>`;
 }
 
 /**

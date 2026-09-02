@@ -132,3 +132,45 @@ input:disabled { background: var(--surface-2); color: var(--text-3); cursor: not
   .field-row, .field-row-3 { grid-template-columns: 1fr; }
   .actions { width: 100%; margin-left: 0; }
 }
+
+/* 반복 설정 */
+.repeat-box {
+  background: var(--surface-2); border-radius: var(--radius-sm);
+  padding: 10px 12px; margin-top: 8px;
+}
+.repeat-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.repeat-row:last-of-type { margin-bottom: 0; }
+.repeat-row .rl { font-size: 12px; color: var(--text-2); flex: none; }
+.repeat-row input[type='number'] { width: 68px; flex: none; }
+.repeat-row input[type='date'] { width: auto; flex: none; }
+
+.wdays { display: flex; gap: 3px; }
+.wdays button {
+  width: 30px; padding: 5px 0; font-size: 12px;
+  background: var(--surface); border-radius: var(--radius-sm);
+}
+.wdays button.is-on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+
+.repeat-summary {
+  font-size: 12px; color: var(--text-2);
+  border-top: 1px solid var(--border); margin-top: 9px; padding-top: 8px;
+}
+
+/* 회차별 완료 */
+.occ-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  gap: 4px;
+}
+.occ {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 9px; border-radius: var(--radius-sm);
+  background: var(--surface-2); font-size: 13px; cursor: pointer;
+}
+.occ:hover { background: var(--border); }
+.occ input { width: auto; flex: none; }
+.occ.is-today { background: var(--accent-soft); }
+.occ.is-today b { font-size: 10px; color: var(--accent); margin-left: auto; }
+.occ.is-late { color: var(--overdue); background: var(--overdue-soft); }
+.occ:has(input:checked) span { color: var(--text-3); text-decoration: line-through; }
+
+.trow .rep { color: var(--text-3); font-weight: 400; flex: none; }

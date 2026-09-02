@@ -154,6 +154,13 @@
 }
 .cbar-task.open-end { padding-right: 6px; }
 
+/* 반복 회차 — 점선 테두리로 "주기적으로 도는 것" 임을 알린다 */
+.cbar-task.is-repeat {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent);
+  background-image: repeating-linear-gradient(115deg,
+    transparent 0 5px, color-mix(in srgb, var(--c) 9%, transparent) 5px 10px);
+}
+
 /* 마감 임박 프로젝트 — 불꽃이 막대 끝(마감 지점)에서 타오른다 */
 .cbar.is-burning { overflow: visible; z-index: 3; }
 .cbar.is-burning .lbl { padding-right: 12px; }
