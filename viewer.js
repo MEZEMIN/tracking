@@ -4,7 +4,7 @@ const T = window.Tracking;
 const $ = (s) => document.querySelector(s);
 
 let data = T.emptyData();
-let view = 'priority';
+let view = 'projects';   // 조회 앱을 열면 프로젝트 화면부터 보인다
 let calCursor = new Date();      // 캘린더가 보고 있는 달
 let hideDone = true;
 let filterProject = '';
@@ -72,9 +72,9 @@ function flashUpdated() {
 
 function showLoadError() {
   $('#stats').innerHTML = '';
-  $('#task-groups').innerHTML =
+  $('#project-cards').innerHTML =
     '<div class="empty">아직 게시된 데이터가 없습니다.<br>' +
-    '입력 앱에서 <b>게시용 파일 내보내기</b>로 <code>data.json</code>을 만들어 저장소에 올려주세요.</div>';
+    '입력 앱에서 <b>게시</b> 버튼을 누르면 여기에 나타납니다.</div>';
 }
 
 function renderPublished() {
@@ -111,9 +111,8 @@ function visibleTasks() {
 
 function render() {
   renderStats();
-  if (view === 'priority') renderPriority();
-  if (view === 'calendar') renderCalendar();
   if (view === 'projects') renderProjects();
+  if (view === 'calendar') renderCalendar();
 }
 
 function renderStats() {
@@ -135,70 +134,6 @@ function renderStats() {
     `<div class="stat"${c.tone ? ` data-tone="${c.tone}"` : ''}>
        <div class="n">${c.n}</div><div class="k">${esc(c.k)}</div>
      </div>`).join('');
-}
-
-/** 마감 임박도로 묶어 보여준다 — "오늘 뭘 할지"가 바로 보이도록. */
-function renderPriority() {
-  const tasks = T.sortTasks(visibleTasks());
-  if (!tasks.length) {
-    $('#task-groups').innerHTML = '<div class="empty">표시할 업무가 없습니다.</div>';
-    return;
-  }
-
-  const buckets = [
-    { key: 'overdue', title: '마감 지남', tone: 'overdue', test: (n) => n !== null && n < 0 },
-    { key: 'today', title: '오늘', tone: 'today', test: (n) => n === 0 },
-    { key: 'soon', title: '3일 이내', test: (n) => n !== null && n >= 1 && n <= 3 },
-    { key: 'week', title: '이번 주', test: (n) => n !== null && n >= 4 && n <= 7 },
-    { key: 'later', title: '이후', test: (n) => n !== null && n > 7 },
-    { key: 'none', title: '마감일 없음', test: (n) => n === null },
-  ];
-
-  const open = tasks.filter((t) => t.status !== 'done');
-  const done = tasks.filter((t) => t.status === 'done');
-
-  let html = '';
-  for (const b of buckets) {
-    const items = open.filter((t) => b.test(T.daysUntil(t.dueDate)));
-    if (!items.length) continue;
-    html += group(b.title, items, b.tone);
-  }
-  if (done.length) html += group('완료', done);
-
-  $('#task-groups').innerHTML = html;
-  bindTaskClicks($('#task-groups'));
-}
-
-function group(title, tasks, tone) {
-  return `<div class="group"${tone ? ` data-tone="${tone}"` : ''}>
-    <div class="group-title">${esc(title)} · ${tasks.length}</div>
-    <div class="task-list">${tasks.map(taskRow).join('')}</div>
-  </div>`;
-}
-
-function taskRow(t) {
-  const p = T.projectOf(data, t);
-  const pct = T.effectiveProgress(t);
-  const cl = T.checklistProgress(t);
-  const status = T.STATUSES.find((s) => s.id === t.status);
-
-  const meta = [];
-  if (p) meta.push(`<span class="proj"><i class="dot" style="background:${esc(p.color)}"></i>${esc(p.name)}</span>`);
-  if (t.dueDate) meta.push(esc(T.formatDate(t.dueDate)));
-  if (status && t.status !== 'todo') meta.push(esc(status.label));
-  if (cl) meta.push(`체크리스트 ${cl.done}/${cl.total}`);
-  if (t.estimateHours) meta.push(`${t.spentHours || 0}/${t.estimateHours}h`);
-
-  return `<button class="task${t.status === 'done' ? ' is-done' : ''}" data-id="${esc(t.id)}">
-    <i class="pri" data-p="${esc(t.priority)}"></i>
-    <div class="main">
-      <div class="title">${esc(t.title)}</div>
-      <div class="meta">${meta.join('<span>·</span>')}</div>
-    </div>
-    <div class="bar"><i style="width:${pct}%"></i></div>
-    <div class="pct">${pct}%</div>
-    <span class="dday" data-tone="${T.ddayTone(t.dueDate, t.status)}">${T.ddayLabel(t.dueDate)}</span>
-  </button>`;
 }
 
 /* ---------- 캘린더 ---------- */
@@ -461,9 +396,8 @@ $('#tabs').addEventListener('click', (e) => {
   if (!btn) return;
   view = btn.dataset.view;
   document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('is-on', b === btn));
-  $('#view-priority').hidden = view !== 'priority';
-  $('#view-calendar').hidden = view !== 'calendar';
   $('#view-projects').hidden = view !== 'projects';
+  $('#view-calendar').hidden = view !== 'calendar';
   render();
 });
 

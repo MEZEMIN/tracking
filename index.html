@@ -17,9 +17,8 @@
       <span class="updated" id="updated" hidden></span>
     </div>
     <nav class="tabs" id="tabs">
-      <button class="tab is-on" data-view="priority">우선순위</button>
+      <button class="tab is-on" data-view="projects">프로젝트</button>
       <button class="tab" data-view="calendar">캘린더</button>
-      <button class="tab" data-view="projects">프로젝트</button>
     </nav>
   </div>
 </header>
@@ -28,17 +27,17 @@
 
   <section class="stats" id="stats"></section>
 
-  <!-- 우선순위 -->
-  <section class="view" id="view-priority">
-    <div class="filters">
-      <label class="check"><input type="checkbox" id="hide-done" checked> 완료 숨기기</label>
-      <select id="filter-project"><option value="">전체 프로젝트</option></select>
-    </div>
-    <div id="task-groups"></div>
+  <!-- 프로젝트 (첫 화면) -->
+  <section class="view" id="view-projects">
+    <div id="project-cards"></div>
   </section>
 
   <!-- 캘린더 -->
   <section class="view" id="view-calendar" hidden>
+    <div class="filters">
+      <label class="check"><input type="checkbox" id="hide-done" checked> 완료 숨기기</label>
+      <select id="filter-project"><option value="">전체 프로젝트</option></select>
+    </div>
     <div class="cal-head">
       <button class="ghost" id="cal-prev" aria-label="이전 달">‹</button>
       <h2 id="cal-title"></h2>
@@ -55,11 +54,6 @@
       <span>목</span><span>금</span><span>토</span>
     </div>
     <div class="cal-grid" id="cal-grid"></div>
-  </section>
-
-  <!-- 프로젝트 -->
-  <section class="view" id="view-projects" hidden>
-    <div id="project-cards"></div>
   </section>
 
 </main>
